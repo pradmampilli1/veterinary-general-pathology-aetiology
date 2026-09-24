@@ -43,10 +43,8 @@ def log_to_google_sheet(student_name, roll_number, step, user_input, ai_response
     }
     
     try:
-        # Fire-and-forget post request with a short timeout so app UI stays fast
         requests.post(WEBHOOK_URL, json=payload, timeout=3)
-    except Exception as e:
-        # Silently fail or log locally so student experience is never interrupted
+    except Exception:
         pass
 
 # ==========================================
@@ -62,25 +60,24 @@ if not student_name or not roll_number:
 
 st.sidebar.success(f"Active Session: **{student_name}** ({roll_number})")
 
-# Reset Session Button
 if st.sidebar.button("🔄 Restart Case Study"):
     st.session_state.messages = []
     st.session_state.step_count = 1
     st.rerun()
 
 # ==========================================
-# 4. SOCRATIC AI SYSTEM INSTRUCTIONS
+# 4. SOCRATIC AI SYSTEM INSTRUCTIONS (VCI 2nd Year Level)
 # ==========================================
 SOCRATIC_SYSTEM_PROMPT = f"""
-You are an expert Veterinary Pathology Professor tutoring a undergraduate veterinary student named {student_name}.
-Your goal is to guide them through diagnostic reasoning on General Pathology / Aetiology concepts using the Socratic method.
+You are an encouraging Veterinary Pathology Professor tutoring a 2nd-year BVSc & AH student named {student_name} under the VCI syllabus.
+The student has completed Anatomy and Physiology but is NEW to General Pathology and Aetiology.
 
-CRITICAL RULES:
-1. NEVER give the direct answer or list full diagnoses immediately.
-2. Ask ONE focused, thought-provoking question at a time to lead the student to the correct answer.
-3. If the student gives an incorrect or incomplete answer, gently point out what they missed or offer a subtle hint, then ask a follow-up guiding question.
-4. If the student gives a good answer, validate them briefly and move to the next logical step in diagnostic reasoning (e.g., physical lesion description -> probable cause -> mechanism -> confirmation method).
-5. Keep your tone encouraging, scholarly, and supportive. Keep responses concise (under 3-4 sentences per turn).
+PEDAGOGICAL STRATEGY:
+1. Start from basic physiological/anatomical principles (e.g., normal blood supply, cell structures, membrane integrity) and bridge them to pathological mechanisms (etiology, cell injury, necrosis, inflammation, circulatory disturbances).
+2. NEVER ask complex clinical differential diagnosis questions or expect advanced gross pathology terminology yet.
+3. Keep questions simple, conceptual, and foundational. Ask ONE simple question at a time.
+4. If the student answers using basic anatomy or common sense, praise them and connect it to the proper pathology term (e.g., if they say 'lack of oxygen', introduce 'hypoxia').
+5. Keep answers under 3 sentences so it remains an active conversation.
 """
 
 # ==========================================
@@ -91,18 +88,21 @@ if "messages" not in st.session_state:
 if "step_count" not in st.session_state:
     st.session_state.step_count = 1
 
-# Initialize Gemini Model
 model = genai.GenerativeModel(
     model_name="gemini-1.5-flash",
     system_instruction=SOCRATIC_SYSTEM_PROMPT
 )
 
-# Start conversation if fresh
+# Foundational Opening Question
 if len(st.session_state.messages) == 0:
-    initial_greeting = f"Welcome {student_name}! Let's begin today's general pathology diagnostic case. \n\nImagine you perform a post-mortem on a bird or animal and observe marked focal liver necrosis with hyperaemic zones. Before jumping to specific pathogens, what initial gross morphological features should you evaluate to differentiate between an acute hypoxic lesion and a primary infectious aetiology?"
+    initial_greeting = f"""Welcome {student_name}! Welcome to General Pathology & Aetiology practice.
+
+You already know from Anatomy and Physiology that a healthy liver is reddish-brown, smooth, and firm with normal blood circulation. 
+
+Imagine during a post-mortem or lab examination, you notice a liver that looks dark red, swollen, and soft. Before thinking about specific diseases, what fundamental cause or mechanism could disrupt normal blood flow or cause tissue cells to swell and die?"""
+    
     st.session_state.messages.append({"role": "model", "parts": [initial_greeting]})
 
-# Display previous chat messages
 for msg in st.session_state.messages:
     role = "user" if msg["role"] == "user" else "assistant"
     with st.chat_message(role):
@@ -111,16 +111,13 @@ for msg in st.session_state.messages:
 # ==========================================
 # 6. USER INPUT & RESPONSE INTERACTION
 # ==========================================
-if user_prompt := st.chat_input("Type your response or diagnostic step here..."):
-    # Display User Input
+if user_prompt := st.chat_input("Type your response or answer here..."):
     st.chat_message("user").markdown(user_prompt)
     st.session_state.messages.append({"role": "user", "parts": [user_prompt]})
     
-    # Generate Socratic AI Response
     with st.chat_message("assistant"):
         with st.spinner("Analyzing your response..."):
             try:
-                # Format conversation history for Gemini
                 formatted_history = []
                 for m in st.session_state.messages:
                     formatted_history.append({
@@ -135,7 +132,6 @@ if user_prompt := st.chat_input("Type your response or diagnostic step here...")
                 st.markdown(ai_reply)
                 st.session_state.messages.append({"role": "model", "parts": [ai_reply]})
                 
-                # Log interaction to Google Sheets via Webhook
                 log_to_google_sheet(
                     student_name=student_name,
                     roll_number=roll_number,
