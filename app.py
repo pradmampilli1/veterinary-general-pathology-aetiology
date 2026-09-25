@@ -89,7 +89,7 @@ if "step_count" not in st.session_state:
     st.session_state.step_count = 1
 
 model = genai.GenerativeModel(
-    model_name="gemini-1.5-flash",
+    model_name="gemini-1.5-flash-latest",
     system_instruction=SOCRATIC_SYSTEM_PROMPT
 )
 
