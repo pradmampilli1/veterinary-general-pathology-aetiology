@@ -88,7 +88,7 @@ if "messages" not in st.session_state:
 if "step_count" not in st.session_state:
     st.session_state.step_count = 1
 
-# Using stable gemini-2.0-flash model
+# Using stable gemini-3.8-flash model
 model = genai.GenerativeModel(
     model_name="gemini-2.0-flash",
     system_instruction=SOCRATIC_SYSTEM_PROMPT
