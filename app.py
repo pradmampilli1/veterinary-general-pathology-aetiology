@@ -15,7 +15,7 @@ st.set_page_config(
 st.title("🔬 Veterinary General Pathology Tutor")
 st.caption("Etiology & Causation of Diseases — Interactive Socratic Practice")
 
-# Read Secrets safely
+# Read Secrets
 try:
     GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
     WEBHOOK_URL = st.secrets.get("WEBHOOK_URL", None)
@@ -61,13 +61,13 @@ if not student_name or not roll_number:
 st.sidebar.success(f"Active Session: **{student_name}** ({roll_number})")
 
 if st.sidebar.button("🔄 Restart Etiology Session"):
-    for key in ["messages", "chat_session", "step_count"]:
+    for key in ["messages", "chat_session", "step_count", "working_model"]:
         if key in st.session_state:
             del st.session_state[key]
     st.rerun()
 
 # ==========================================
-# 4. SOCRATIC AI SYSTEM INSTRUCTIONS (ETIOLOGY SPECIFIC)
+# 4. SOCRATIC AI SYSTEM INSTRUCTIONS
 # ==========================================
 SOCRATIC_SYSTEM_PROMPT = f"""
 You are an enthusiastic and brilliant Veterinary Pathology Professor tutoring a 2nd-year BVSc & AH student named {student_name} under the VCI syllabus.
@@ -86,23 +86,46 @@ PEDAGOGICAL & DIALOGUE STYLE:
 1. Make it exciting and highly relevant to veterinary practice! Use real animal examples (horses, dogs, cattle, cats, poultry) to pique their interest.
 2. Ask ONE focused, thought-provoking Socratic question at a time.
 3. Keep responses concise (2–4 sentences max) so the interaction feels lively.
-4. When the student answers, praise their veterinary intuition, correct or refine any terms according to standard pathology terminology (e.g., connecting "missing organ" to "agenesis/aplasia"), and bridge logically to the next concept in disease causation.
+4. When the student answers, praise their veterinary intuition, correct or refine any terms according to standard pathology terminology, and bridge logically to the next concept in disease causation.
 5. Do NOT leap into advanced clinical treatment or systemic gross pathology. Keep the focus entirely on disease etiology, intrinsic predisposing factors, and exciting causes.
 """
 
 # ==========================================
-# 5. CHAT INITIALIZATION & SESSION STATE
+# 5. DYNAMIC MODEL SELECTION (PREVENTS 404/429)
+# ==========================================
+@st.cache_resource
+def get_available_models():
+    """Queries Google API for currently active models on this key."""
+    try:
+        available = []
+        for m in genai.list_models():
+            if 'generateContent' in m.supported_generation_methods:
+                # Remove 'models/' prefix if present
+                clean_name = m.name.replace("models/", "")
+                available.append(clean_name)
+        # Prioritize flash models
+        flash_models = [m for m in available if "flash" in m]
+        other_models = [m for m in available if "flash" not in m]
+        return flash_models + other_models
+    except Exception:
+        # Emergency fallback priority list
+        return ["gemini-1.5-flash-latest", "gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"]
+
+# ==========================================
+# 6. CHAT INITIALIZATION & SESSION STATE
 # ==========================================
 if "step_count" not in st.session_state:
     st.session_state.step_count = 1
 
-# Standard stable production model
-model = genai.GenerativeModel(
-    model_name="gemini-1.5-flash",
-    system_instruction=SOCRATIC_SYSTEM_PROMPT
-)
+if "working_model" not in st.session_state:
+    model_candidates = get_available_models()
+    st.session_state.working_model = model_candidates[0] if model_candidates else "gemini-1.5-flash-latest"
 
 if "chat_session" not in st.session_state:
+    model = genai.GenerativeModel(
+        model_name=st.session_state.working_model,
+        system_instruction=SOCRATIC_SYSTEM_PROMPT
+    )
     st.session_state.chat_session = model.start_chat(history=[])
 
 if "messages" not in st.session_state:
@@ -123,7 +146,7 @@ for msg in st.session_state.messages:
         st.markdown(msg["content"])
 
 # ==========================================
-# 6. USER INPUT & STREAMED RESPONSE
+# 7. USER INPUT & STREAMED RESPONSE WITH AUTO-FAILOVER
 # ==========================================
 if user_prompt := st.chat_input("Type your response here..."):
     st.chat_message("user").markdown(user_prompt)
@@ -132,18 +155,45 @@ if user_prompt := st.chat_input("Type your response here..."):
     with st.chat_message("assistant"):
         message_placeholder = st.empty()
         full_response = ""
+        success = False
         
-        try:
-            # Stream response in real time (1-2s response time)
-            response = st.session_state.chat_session.send_message(user_prompt, stream=True)
-            for chunk in response:
-                full_response += chunk.text
-                message_placeholder.markdown(full_response + "▌")
-            
-            message_placeholder.markdown(full_response)
-            st.session_state.messages.append({"role": "assistant", "content": full_response})
-            
-            # Asynchronous logging to Google Sheet
+        # Try primary model first, fallback to candidates if 404/429 hits
+        candidates = [st.session_state.working_model] + get_available_models()
+        # Remove duplicates while preserving order
+        candidate_list = list(dict.fromkeys(candidates))
+        
+        for model_candidate in candidate_list:
+            try:
+                # Re-init chat if switching models mid-stream
+                if model_candidate != st.session_state.working_model:
+                    fallback_model = genai.GenerativeModel(
+                        model_name=model_candidate,
+                        system_instruction=SOCRATIC_SYSTEM_PROMPT
+                    )
+                    # Convert history to format expected by start_chat
+                    chat_history = []
+                    for m in st.session_state.messages[:-1]:
+                        role = "user" if m["role"] == "user" else "model"
+                        chat_history.append({"role": role, "parts": [m["content"]]})
+                    
+                    st.session_state.chat_session = fallback_model.start_chat(history=chat_history)
+                    st.session_state.working_model = model_candidate
+
+                response = st.session_state.chat_session.send_message(user_prompt, stream=True)
+                for chunk in response:
+                    full_response += chunk.text
+                    message_placeholder.markdown(full_response + "▌")
+                
+                message_placeholder.markdown(full_response)
+                st.session_state.messages.append({"role": "assistant", "content": full_response})
+                success = True
+                break  # Exit fallback loop on success
+                
+            except Exception as e:
+                # If 404 or 429, try next model in candidate list quietly
+                continue
+        
+        if success:
             log_to_google_sheet(
                 student_name=student_name,
                 roll_number=roll_number,
@@ -151,8 +201,6 @@ if user_prompt := st.chat_input("Type your response here..."):
                 user_input=user_prompt,
                 ai_response=full_response
             )
-            
             st.session_state.step_count += 1
-            
-        except Exception as e:
-            st.error(f"Error communicating with Gemini API: {str(e)}")
+        else:
+            st.error("Unable to reach Google API across active models. Please check your API key in Streamlit Secrets.")
