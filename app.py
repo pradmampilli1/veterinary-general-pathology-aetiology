@@ -1,3 +1,4 @@
+# Version 2.0 - Socratic General Pathology
 import streamlit as st
 import google.generativeai as genai
 import requests
