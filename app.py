@@ -15,7 +15,7 @@ st.set_page_config(
 st.title("🔬 Veterinary General Pathology Tutor")
 st.caption("Etiology & Causation of Diseases — Interactive Socratic Practice")
 
-# Read Secrets
+# Read Secrets safely
 try:
     GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
     WEBHOOK_URL = st.secrets.get("WEBHOOK_URL", None)
@@ -96,8 +96,9 @@ PEDAGOGICAL & DIALOGUE STYLE:
 if "step_count" not in st.session_state:
     st.session_state.step_count = 1
 
+# Standard stable production model
 model = genai.GenerativeModel(
-    model_name="gemini-3.8-flash",
+    model_name="gemini-1.5-flash",
     system_instruction=SOCRATIC_SYSTEM_PROMPT
 )
 
@@ -133,7 +134,7 @@ if user_prompt := st.chat_input("Type your response here..."):
         full_response = ""
         
         try:
-            # Stream response in real time (1-2s delay instead of 20s)
+            # Stream response in real time (1-2s response time)
             response = st.session_state.chat_session.send_message(user_prompt, stream=True)
             for chunk in response:
                 full_response += chunk.text
