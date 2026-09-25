@@ -1,7 +1,6 @@
 import streamlit as st
 import google.generativeai as genai
 import requests
-import json
 
 # ==========================================
 # 1. PAGE CONFIGURATION & STYLING
@@ -23,14 +22,12 @@ except Exception:
     st.error("Missing secrets! Please configure GEMINI_API_KEY in Streamlit Advanced Settings.")
     st.stop()
 
-# Configure Gemini
 genai.configure(api_key=GEMINI_API_KEY)
 
 # ==========================================
 # 2. LOGGING HELPER FUNCTION
 # ==========================================
 def log_to_google_sheet(student_name, roll_number, step, user_input, ai_response):
-    """Sends student interaction data to Google Apps Script Webhook asynchronously."""
     if not WEBHOOK_URL:
         return
     
@@ -61,58 +58,57 @@ if not student_name or not roll_number:
 st.sidebar.success(f"Active Session: **{student_name}** ({roll_number})")
 
 if st.sidebar.button("🔄 Restart Etiology Session"):
-    for key in ["messages", "chat_session", "step_count", "working_model"]:
+    for key in ["messages", "step_count", "working_model"]:
         if key in st.session_state:
             del st.session_state[key]
     st.rerun()
 
 # ==========================================
-# 4. SOCRATIC AI SYSTEM INSTRUCTIONS
+# 4. STRICT SOCRATIC SYSTEM PROMPT
 # ==========================================
 SOCRATIC_SYSTEM_PROMPT = f"""
-You are an enthusiastic and brilliant Veterinary Pathology Professor tutoring a 2nd-year BVSc & AH student named {student_name} under the VCI syllabus.
+You are an expert Veterinary Pathology Professor leading a 2nd-year BVSc & AH student named {student_name} through the VCI syllabus.
 
-STRICT TOPIC SCOPE:
-Your session is STRICTLY restricted to "Etiology and Causation of Diseases in Animals" (Chapter: Etiology).
-Focus specifically on helping the student master:
-1. PREDISPOSING (INTRINSIC) CAUSES:
-   - Genetic/Inherited factors: Lethal (e.g., Atresia coli, Parrot beak), Sub-lethal (e.g., Imperforate anus, Scrotal hernia, Deafness in white cats), Inherited structural defects (e.g., Cryptorchidism).
-   - Non-genetic / Developmental Anomalies: Arrest of development (Agenesis/Aplasia, Hypoplasia, Atresia, Fissure), Excessive development (Polydactyla, Congenital hypertrophy), Persistence of fetal structures (Persistent urachus), Displacements, Fusion of sexual characters (Freemartin, Hermaphrodite).
-   - Intrinsic Factors: Genus (Rinderpest in cattle vs man), Breed (Malignant melanoma in Grey horses, Brain tumors in Bulldogs, Bone tumors in Great Danes, Dairy vs Beef cattle susceptibility), Age (Strangles in young horses, Tumors in older animals), Sex (Goiter/Liver diseases vs Nephritis), and Color/Pigment (Photodynamic sensitivity & Melanoma in grey coat).
-2. EXCITING (EXTRINSIC) CAUSES:
-   - Physical causes: Radiation/Thermal/Sunburns, Cold (Frostbite/Necrosis), Electricity, Atmospheric pressure (Brisket disease, Caisson disease), Mechanical trauma (Perforation, Laceration, Concussion).
+STRICT CURRICULUM BOUNDARY:
+Your SOLE goal is to test and guide the student on "ETIOLOGY & CAUSATION OF DISEASES IN ANIMALS". Do not deviate into treatment, prognosis, or unrelated general knowledge.
 
-PEDAGOGICAL & DIALOGUE STYLE:
-1. Make it exciting and highly relevant to veterinary practice! Use real animal examples (horses, dogs, cattle, cats, poultry) to pique their interest.
-2. Ask ONE focused, thought-provoking Socratic question at a time.
-3. Keep responses concise (2–4 sentences max) so the interaction feels lively.
-4. When the student answers, praise their veterinary intuition, correct or refine any terms according to standard pathology terminology, and bridge logically to the next concept in disease causation.
-5. Do NOT leap into advanced clinical treatment or systemic gross pathology. Keep the focus entirely on disease etiology, intrinsic predisposing factors, and exciting causes.
+TOPIC SYLLABUS TO COVER IN ORDER:
+1. Intrinsic Predisposing Causes:
+   - Species / Genus immunity (e.g., Rinderpest in cattle vs human)
+   - Breed susceptibility (e.g., Melanoma in Grey horses, Tumors in Bulldogs/Great Danes)
+   - Age susceptibility (e.g., Strangles in foals vs adult tumors)
+   - Sex & Coat pigment / Photodynamic sensitivity
+   - Genetic/Inherited anomalies (Lethal: Atresia coli; Sub-lethal: Imperforate anus, Deafness in white cats)
+   - Developmental defects (Agenesis, Hypoplasia, Freemartin, Hermaphrodite)
+2. Extrinsic Exciting Causes:
+   - Physical: Radiation, Thermal (Frostbite/Necrosis), Electricity, Atmospheric pressure (Brisket disease)
+   - Mechanical: Concussion, Perforation, Laceration
+
+PEDAGOGICAL RULES:
+- ALWAYS assess the student's answer against Etiology concepts first.
+- Praise correct intuition, correct any wrong terminology, and ask EXACTLY ONE logical follow-up question strictly related to the etiology syllabus above.
+- Never write long lectures. Keep answers under 3 short sentences.
 """
 
 # ==========================================
-# 5. DYNAMIC MODEL SELECTION (PREVENTS 404/429)
+# 5. DYNAMIC MODEL RETRIEVAL
 # ==========================================
 @st.cache_resource
 def get_available_models():
-    """Queries Google API for currently active models on this key."""
     try:
         available = []
         for m in genai.list_models():
             if 'generateContent' in m.supported_generation_methods:
-                # Remove 'models/' prefix if present
                 clean_name = m.name.replace("models/", "")
                 available.append(clean_name)
-        # Prioritize flash models
         flash_models = [m for m in available if "flash" in m]
         other_models = [m for m in available if "flash" not in m]
         return flash_models + other_models
     except Exception:
-        # Emergency fallback priority list
-        return ["gemini-1.5-flash-latest", "gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"]
+        return ["gemini-1.5-flash-latest", "gemini-1.5-flash", "gemini-2.0-flash"]
 
 # ==========================================
-# 6. CHAT INITIALIZATION & SESSION STATE
+# 6. INITIALIZATION
 # ==========================================
 if "step_count" not in st.session_state:
     st.session_state.step_count = 1
@@ -120,13 +116,6 @@ if "step_count" not in st.session_state:
 if "working_model" not in st.session_state:
     model_candidates = get_available_models()
     st.session_state.working_model = model_candidates[0] if model_candidates else "gemini-1.5-flash-latest"
-
-if "chat_session" not in st.session_state:
-    model = genai.GenerativeModel(
-        model_name=st.session_state.working_model,
-        system_instruction=SOCRATIC_SYSTEM_PROMPT
-    )
-    st.session_state.chat_session = model.start_chat(history=[])
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -140,13 +129,12 @@ In disease causation, would you classify coat color or breed as an **Intrinsic P
     
     st.session_state.messages.append({"role": "assistant", "content": initial_greeting})
 
-# Render existing messages
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
 # ==========================================
-# 7. USER INPUT & STREAMED RESPONSE WITH AUTO-FAILOVER
+# 7. USER INPUT & CONTEXT-LIMITED STREAMING
 # ==========================================
 if user_prompt := st.chat_input("Type your response here..."):
     st.chat_message("user").markdown(user_prompt)
@@ -157,29 +145,28 @@ if user_prompt := st.chat_input("Type your response here..."):
         full_response = ""
         success = False
         
-        # Try primary model first, fallback to candidates if 404/429 hits
+        # Truncate context to last 6 messages to prevent topic drift
+        recent_history = st.session_state.messages[-6:-1]
+        
         candidates = [st.session_state.working_model] + get_available_models()
-        # Remove duplicates while preserving order
         candidate_list = list(dict.fromkeys(candidates))
         
         for model_candidate in candidate_list:
             try:
-                # Re-init chat if switching models mid-stream
-                if model_candidate != st.session_state.working_model:
-                    fallback_model = genai.GenerativeModel(
-                        model_name=model_candidate,
-                        system_instruction=SOCRATIC_SYSTEM_PROMPT
-                    )
-                    # Convert history to format expected by start_chat
-                    chat_history = []
-                    for m in st.session_state.messages[:-1]:
-                        role = "user" if m["role"] == "user" else "model"
-                        chat_history.append({"role": role, "parts": [m["content"]]})
-                    
-                    st.session_state.chat_session = fallback_model.start_chat(history=chat_history)
-                    st.session_state.working_model = model_candidate
+                active_model = genai.GenerativeModel(
+                    model_name=model_candidate,
+                    system_instruction=SOCRATIC_SYSTEM_PROMPT
+                )
+                
+                chat_history = []
+                for m in recent_history:
+                    role = "user" if m["role"] == "user" else "model"
+                    chat_history.append({"role": role, "parts": [m["content"]]})
+                
+                chat_session = active_model.start_chat(history=chat_history)
+                st.session_state.working_model = model_candidate
 
-                response = st.session_state.chat_session.send_message(user_prompt, stream=True)
+                response = chat_session.send_message(user_prompt, stream=True)
                 for chunk in response:
                     full_response += chunk.text
                     message_placeholder.markdown(full_response + "▌")
@@ -187,10 +174,9 @@ if user_prompt := st.chat_input("Type your response here..."):
                 message_placeholder.markdown(full_response)
                 st.session_state.messages.append({"role": "assistant", "content": full_response})
                 success = True
-                break  # Exit fallback loop on success
+                break
                 
-            except Exception as e:
-                # If 404 or 429, try next model in candidate list quietly
+            except Exception:
                 continue
         
         if success:
@@ -203,4 +189,4 @@ if user_prompt := st.chat_input("Type your response here..."):
             )
             st.session_state.step_count += 1
         else:
-            st.error("Unable to reach Google API across active models. Please check your API key in Streamlit Secrets.")
+            st.error("Unable to reach Google API across active models. Please check your API key.")
