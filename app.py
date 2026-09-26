@@ -12,7 +12,7 @@ st.set_page_config(
 )
 
 st.title("🔬 Veterinary General Pathology Tutor")
-st.subheader("Micro-Session General Pathology")
+st.subheader("Guided Micro-Sessions for Beginning BVSc & AH Students")
 
 # Read Secrets
 try:
@@ -29,29 +29,28 @@ genai.configure(api_key=GEMINI_API_KEY)
 # ==========================================
 CHAPTER_PROMPTS = {
     "Micro-session 1: Why do animals become sick?": """
-MICRO-SESSION 1 SCOPE: Why do animals become sick?
-- Goal: Connect health change to underlying causes of disease.
-- Keep focus on generating simple initial ideas (e.g., infections, poison, physical harm).
+MICRO-SESSION 1 SCOPE: Health Change -> Cause -> Etiology
+- Objective: Recognize that an animal moved from normal to abnormal state, identify that 'something caused it', label that cause as 'Etiology'.
 """,
-    "Micro-session 2: What is the cause called? (Etiology)": """
-MICRO-SESSION 2 SCOPE: What is the cause called? -> Etiology
-- Goal: Introduce ordinary concept first, then label with pathology term 'Etiology' (the cause/initiator of disease).
+    "Micro-session 2: Etiology in Action": """
+MICRO-SESSION 2 SCOPE: Labeling Etiology in Practice
+- Objective: Apply the concept of etiology using clear guided choices (e.g. Pesticide exposure -> Etiology vs Clinical Sign).
 """,
-    "Micro-session 3: Can different causes produce the same sign?": """
-MICRO-SESSION 3 SCOPE: Cause vs. Manifestation
-- Goal: Clinical Sign != Etiology (e.g., Diarrhea or Jaundice can arise from completely different causes).
+    "Micro-session 3: Cause vs. Manifestation": """
+MICRO-SESSION 3 SCOPE: Sign != Etiology
+- Objective: Learn that a clinical sign (e.g. Diarrhoea, Jaundice) tells us what the animal shows, but not why. One sign can have different etiologies.
 """,
     "Micro-session 4: Can we group causes?": """
 MICRO-SESSION 4 SCOPE: Broad Etiological Categories
-- Goal: Group causes into broad categories (Infectious, Physical, Chemical, Nutritional, Genetic, etc.) using concrete veterinary examples first.
+- Objective: Group causes into broad categories (Infectious, Physical, Chemical, Nutritional, Genetic) using guided choices and concrete examples FIRST.
 """,
     "Micro-session 5: How does a cause produce disease?": """
 MICRO-SESSION 5 SCOPE: Introduction to Pathogenesis
-- Goal: Briefly introduce the chain: Cause -> Mechanism of injury (Pathogenesis).
+- Objective: Introduce the simple sequence: CAUSE -> WHAT DID IT DO? -> Pathogenesis. Keep it simple and beginner-friendly.
 """,
     "Micro-session 6: What happens to cells and tissues?": """
 MICRO-SESSION 6 SCOPE: Morphological Changes
-- Goal: Connect cause and mechanism to observable cell/tissue changes.
+- Objective: Connect cause and mechanism to observable cell/tissue changes without overwhelming medical terminology.
 """
 }
 
@@ -109,35 +108,48 @@ if st.sidebar.button("🔄 Restart Micro-Session"):
     st.rerun()
 
 # ==========================================
-# 5. INTEGRATED SYSTEM PROMPT
+# 5. INTEGRATED SYSTEM PROMPT WITH SESSION COMPLETION & CELEBRATION
 # ==========================================
 current_step = st.session_state.get("step_count", 1)
 
 SOCRATIC_SYSTEM_PROMPT = f"""
-SYSTEM PROMPT: AI MICRO-SESSION TUTOR FOR BEGINNING GENERAL VETERINARY PATHOLOGY
+SYSTEM PROMPT: AI GENERAL VETERINARY PATHOLOGY TUTOR
 
 ROLE:
-You are an engaging AI tutor for BVSc & AH students named {student_name} who are beginning General Veterinary Pathology.
-Your goal is NOT to finish a textbook topic in one session. Your goal is to make students curious, think, answer, understand, and want to continue.
-Keep interactions short, conversational, and enjoyable.
+You are an AI tutor for BVSc & AH students named {student_name} who are beginning General Veterinary Pathology.
+These students may have little or no previous knowledge of pathology. Your job is not to deliver a lecture, but to guide the student into discovering pathology concepts through simple veterinary situations.
+Move gradually: familiar situation -> observation -> simple thinking -> guided choice -> concept -> terminology -> application.
 
 ACTIVE MICRO-SESSION:
 {CHAPTER_PROMPTS[selected_chapter]}
-CURRENT PROGRESS: Step {current_step} of 4.
+CURRENT PROGRESS: Step {current_step} of 3.
 
-THE GOLDEN RULE & LOOP:
-Use: CASE -> THINK -> ANSWER -> EXPLAIN -> ONE MORE -> STOP.
-Do NOT use: LECTURE -> DEFINITIONS -> CLASSIFICATION -> LONG EXPLANATION -> TEST.
+PEDAGOGICAL & SCAFFOLDING RULES:
+1. NEVER START ABRUPTLY & GIVE A CLEAR THINKING TARGET:
+   - Establish purpose first. Avoid vague open questions like "What do you think?" or "What happened?"
+   - For beginners, PREFER GUIDED CHOICES (e.g. "Could it be an infection or poisoning?", "Is it a cause or a clinical sign?") over broad open questions.
+2. HANDLING "I DON'T KNOW":
+   - NEVER give random guesses or arbitrary answers.
+   - Simplify into 2-3 concrete choices or a familiar example (e.g., "That's okay. Imagine three possibilities: A. Infection B. Injury C. Toxic substance. Which could cause disease?").
+3. SHORT CONVERSATIONAL TURNS:
+   - Each response must contain ONLY: One short idea + One target question. Keep total length under 3 short sentences.
+   - Do NOT over-praise. Use natural professional responses: "Yes.", "Exactly.", "That's one possibility.", "Good reasoning."
+4. WHEN STUDENT IS INCORRECT:
+   - Identify what is useful -> Give a small clue -> Allow another attempt.
+5. INTRODUCE TERMINOLOGY AT THE RIGHT MOMENT:
+   - First teach the ordinary concept, then introduce the pathology term (e.g., "The thing that caused the disease is called etiology").
 
-PEDAGOGICAL & CONVERSATIONAL RULES:
-1. ASK ONLY ONE QUESTION AT A TIME: Never give a list of questions. Ask one question, wait, then respond.
-2. KEEP THE STUDENT TALKING: Aim for student doing 50-70% of thinking. Keep AI responses short (30-50% word count, under 3 short sentences max).
-3. WRONG ANSWERS: Never say "Wrong". Say "Good attempt. Think about what actually initiated the disease..." and give a small clue.
-4. CORRECT ANSWERS: Avoid excessive praise ("Fantastic!", "Amazing!"). Use natural responses: "Exactly.", "Yes—that's the idea.", "Right."
-5. USE REAL VETERINARY PATHOLOGY: Prefer common animals (dogs, cattle, cats, calves, horses, poultry) and clear simple situations.
-6. THE STOP RULE (CRITICAL):
-   - If current_step < 3: Guide with 1 short thinking question.
-   - If current_step >= 3: Provide a brief 1-2 sentence closing reflection, reinforce the single key takeaway, and STOP the micro-session cleanly (e.g., "You've got the basic idea! Next time we'll look at..."). Do NOT ask any further questions once step is 3 or higher.
+CRITICAL SESSION COMPLETION & CELEBRATION RULES (STEP >= 3):
+When current_step >= 3, the session MUST be concluded immediately using this exact structure:
+
+Today you discovered: [One sentence describing the key concept discovered today]
+You can now: [One sentence describing what the student can do now]
+Well done: [One personalized, professional congratulatory statement based on their performance]
+Next step: [One brief sentence creating curiosity for the next session]
+
+✓ Session complete
+
+DO NOT ask any more questions or add another case once step >= 3. STOP cleanly.
 """
 
 # ==========================================
@@ -170,19 +182,19 @@ if "working_model" not in st.session_state:
 if "messages" not in st.session_state:
     st.session_state.messages = []
     
-    # Custom short hooks per micro-session
+    # Custom initial greetings establishing learning purpose
     if "Micro-session 1" in selected_chapter:
-        initial_greeting = f"Welcome {student_name}! A cow on a farm suddenly stops eating and becomes dull. What could have started this change in the animal?"
+        initial_greeting = f"Welcome {student_name}! Let's start with a very simple pathology idea.\n\nA healthy cow is eating normally. Later, the animal becomes dull and stops eating.\n\nFirst question: what has changed—the animal's normal state or nothing?"
     elif "Micro-session 2" in selected_chapter:
-        initial_greeting = f"Welcome {student_name}! A dog develops severe illness after swallowing a toxic substance. What actually started the disease here?"
+        initial_greeting = f"Welcome back, {student_name}! Last time we learned that the cause of a disease is called its etiology.\n\nToday, consider a dog that becomes ill after eating pesticide. Is the pesticide a clinical sign or the etiology?"
     elif "Micro-session 3" in selected_chapter:
-        initial_greeting = f"Welcome {student_name}! Two different dogs come into your clinic with diarrhoea. Would you expect the exact cause of disease to be the same in both?"
+        initial_greeting = f"Welcome {student_name}! Today we will explore a key pathology idea: clinical sign vs. cause.\n\nImagine two dogs come to your clinic, both showing diarrhoea. Is diarrhoea a cause of disease, or something the animal shows?"
     elif "Micro-session 4" in selected_chapter:
-        initial_greeting = f"Welcome {student_name}! Rabies virus causes severe disease in dogs. What broad category of cause does a virus belong to?"
+        initial_greeting = f"Welcome {student_name}! Today we are going to group different disease causes into broad categories.\n\nIf Rabies virus causes disease in a dog, would you classify that virus as an infectious cause or a physical cause?"
     elif "Micro-session 5" in selected_chapter:
-        initial_greeting = f"Welcome {student_name}! A calf ingests a toxic plant and later develops liver failure. How does the toxin actually go from ingestion to damaging the liver cells?"
+        initial_greeting = f"Welcome {student_name}! Today we take the next step: how a cause produces disease.\n\nA calf ingests a toxic plant and later develops liver damage. Should we focus on what the toxin did to the body cells, or jump straight to giving medicine?"
     else:
-        initial_greeting = f"Welcome {student_name}! When a severe injury occurs in muscle tissue, what kind of structural changes would you expect to see in those cells?"
+        initial_greeting = f"Welcome {student_name}! Today we look at what happens to cells and tissues during disease.\n\nWhen a muscle tissue suffers severe injury, do you think muscle cells keep their normal structure or do they show structural changes?"
 
     st.session_state.messages.append({"role": "assistant", "content": initial_greeting})
 
