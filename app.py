@@ -24,44 +24,37 @@ except Exception:
 genai.configure(api_key=GEMINI_API_KEY)
 
 # ==========================================
-# 2. CHAPTER SYLLABUS DEFINITIONS
+# 2. CHAPTER & FOCUS AREA DEFINITIONS
 # ==========================================
 CHAPTER_PROMPTS = {
-    "1. Etiology & Causation of Diseases": """
-STRICT TOPIC SCOPE: Chapter 1 - Etiology & Causation of Diseases
-Focus ONLY on classification of etiologic agents and brief veterinary examples. DO NOT dive into detailed pathogenesis or full disease descriptions.
-
-1. Intrinsic Predisposing Causes (Classification & Examples):
-   - Genus & Breed predisposition (e.g., Hereford cattle and ocular squamous cell carcinoma, Bulldogs and dystocia).
-   - Age, Sex, & Pigment factors (e.g., Squamous cell carcinoma in unpigmented skin).
-   - Inherited/Genetic Anomalies: Lethal factors (e.g., Atresia coli in foals) vs Sub-lethal factors (e.g., Congenital deafness in white cats).
-   - Developmental Anomalies: Basic definitions & examples of Agenesis, Hypoplasia, Aplasia, Atresia, Freemartinism, and Hermaphroditism.
-
-2. Extrinsic Exciting Causes (Classification & Examples):
-   - Physical Agents: Thermal (Burns/Frostbite), Radiation, Electricity, Atmospheric pressure (Brisket Disease / High altitude disease in cattle).
-   - Mechanical Trauma: Laceration, Concussion, Perforation, Rupture.
-   - Chemical & Biotic Agents: Toxins, Infectious microbes, Parasites (Brief naming and classification only).
+    "1. Session 1: Why Do Animals Become Sick? (Concept of Etiology)": """
+STRICT BOUNDARY - SESSION 1: Why Do Animals Become Sick?
+- Focus: Generating general possibilities of why a healthy animal becomes sick. Introduce the term 'Etiology' = cause of disease.
+- DO NOT present formal classifications (Infectious, Chemical, etc.) yet.
+- DO NOT talk about lesions, pathogenesis, or organ systems.
+- Goal: Help the student realize that something must initiate a change from health to disease.
 """,
-    "2. Retrograde Tissue Changes (Degenerations)": """
-STRICT TOPIC SCOPE: Chapter 2 - Retrograde Tissue Changes
-1. Cloudy swelling, Hydropic degeneration, Fatty change (Steatosis) vs Fatty infiltration.
-2. Hyaline, Amyloid, Mucoid, and Myxomatous degenerations.
-3. Pathological Calcification: Dystrophic vs Metastatic calcification.
-4. Necrosis vs Apoptosis: Types of necrosis (Coagulative, Liquefactive, Caseous, Fat necrosis, Gangrene).
+    "2. Session 2: Can We Group the Causes? (Etiological Classification)": """
+STRICT BOUNDARY - SESSION 2: Etiological Categories
+- Focus: Grouping causes into broad categories (Infectious, Physical, Chemical, Nutritional, Genetic/Hereditary, Immunological, Neoplastic, Iatrogenic, Idiopathic).
+- Method: Use concrete veterinary examples FIRST (e.g., Rabies -> Infectious; Pesticide -> Chemical; Trauma -> Physical).
+- DO NOT move to clinical sign vs. cause differentiation yet. Stay focused on sorting examples into categories.
 """,
-    "3. Disturbances of Circulation": """
-STRICT TOPIC SCOPE: Chapter 3 - Disturbances of Circulation
-1. Hyperemia & Congestion (Active vs Passive, Chronic Passive Congestion of Liver/Nutmeg liver and Lungs/Heart failure cells).
-2. Hemorrhage, Hemostasis, and Thrombosis (Virchow's Triad, Types of Thrombi).
-3. Embolism, Ischemia, Infarction, and Edema (Pathophysiology & Transudate vs Exudate).
-4. Shock: Hypovolemic, Cardiogenic, Vasogenic, Septic.
+    "3. Session 3: Same Sign, Different Cause (Cause vs. Manifestation)": """
+STRICT BOUNDARY - SESSION 3: Cause vs. Manifestation
+- Focus: Clinical Sign != Etiology (e.g., Diarrhea or Jaundice is a manifestation, NOT a cause).
+- Method: Explore one clinical sign and lead the student to identify multiple completely different etiological causes for it.
+- DO NOT jump into complex diagnostic algorithms or systemic pathology.
 """,
-    "4. Inflammation & Healing": """
-STRICT TOPIC SCOPE: Chapter 4 - Inflammation & Tissue Repair
-1. Vascular and Cellular events of Acute Inflammation (Vasodilation, Margination, Diapedesis, Chemotaxis, Phagocytosis).
-2. Chemical Mediators of Inflammation.
-3. Morphological patterns: Serous, Fibrinous, Purulent/Suppurative, Catarrhal, Hemorrhagic, Granulomatous.
-4. Tissue Repair: Granulation tissue formation, Healing by Primary & Secondary intention.
+    "4. Session 4: You Are The Pathologist (Pathological Reasoning)": """
+STRICT BOUNDARY - SESSION 4: Reasoning & Case Scenarios
+- Focus: Simple case scenarios. Ask "What broad category of cause should you consider?" and "What additional clue/information would help you decide?"
+- Keep scenarios brief and centered purely on identifying etiological possibilities.
+""",
+    "5. Session 5: Can Disease Have More Than One Cause? (Multifactorial Causation)": """
+STRICT BOUNDARY - SESSION 5: Multifactorial Causation
+- Focus: Host-Agent-Environment interaction. Understand that disease often requires multiple contributing factors.
+- Avoid complex epidemiological jargon; keep explanations anchored in basic veterinary logic.
 """
 }
 
@@ -87,24 +80,24 @@ def log_to_google_sheet(student_name, roll_number, chapter, step, user_input, ai
         pass
 
 # ==========================================
-# 4. STUDENT REGISTRATION & CHAPTER SELECTION (SIDEBAR)
+# 4. STUDENT REGISTRATION & SESSION SELECTION (SIDEBAR)
 # ==========================================
 st.sidebar.header("📋 Student Session Setup")
 student_name = st.sidebar.text_input("Full Name", placeholder="e.g., Dr. Ananya")
 roll_number = st.sidebar.text_input("Roll Number / ID", placeholder="e.g., VET2026-042")
 
 selected_chapter = st.sidebar.selectbox(
-    "Select Pathology Chapter:",
+    "Select Learning Session:",
     list(CHAPTER_PROMPTS.keys())
 )
 
-st.caption(f"Active Topic: **{selected_chapter}**")
+st.caption(f"Active Session Scope: **{selected_chapter}**")
 
 if not student_name or not roll_number:
-    st.info("👈 Please enter your **Full Name**, **Roll Number**, and select a **Chapter** in the sidebar to begin.")
+    st.info("👈 Please enter your **Full Name**, **Roll Number**, and select a **Session** in the sidebar to begin.")
     st.stop()
 
-# Reset chat session if chapter selection changes
+# Reset chat session if session selection changes
 if "current_chapter" in st.session_state and st.session_state.current_chapter != selected_chapter:
     for key in ["messages", "step_count"]:
         if key in st.session_state:
@@ -112,31 +105,54 @@ if "current_chapter" in st.session_state and st.session_state.current_chapter !=
 
 st.session_state.current_chapter = selected_chapter
 
-if st.sidebar.button("🔄 Restart Chapter Session"):
+if st.sidebar.button("🔄 Restart Session"):
     for key in ["messages", "step_count", "working_model"]:
         if key in st.session_state:
             del st.session_state[key]
     st.rerun()
 
 # ==========================================
-# 5. DYNAMIC SOCRATIC SYSTEM PROMPT
+# 5. INTEGRATED SYSTEM PROMPT WITH STRICT FOCUS ENFORCEMENT
 # ==========================================
 SOCRATIC_SYSTEM_PROMPT = f"""
-You are an expert Veterinary Pathology Professor tutoring a 2nd-year BVSc & AH student named {student_name} under the VCI syllabus.
+SYSTEM PROMPT: AI PEDAGOGICAL AGENT FOR BEGINNING GENERAL VETERINARY PATHOLOGY
 
+ROLE:
+You are an AI learning facilitator for BVSc & AH undergraduate students named {student_name} who are beginning General Veterinary Pathology.
+Your primary responsibility is to create interest, curiosity, and conceptual understanding rather than simply providing information.
+The student is encountering General Pathology for the first time. NEVER assume they understand pathology terminology, disease mechanisms, lesion terminology, or formal classifications.
+
+STRICT FOCUS AREA BOUNDARY (CRITICAL):
 {CHAPTER_PROMPTS[selected_chapter]}
+- ABSOLUTE RULE: STAY STRICTLY WITHIN THIS ACTIVE SESSION SCOPE.
+- DO NOT jump ahead to future sessions, advanced disease mechanisms, specific tissue lesions, pathogenesis, or diagnostic steps outside this topic.
+- If the student asks about a concept outside this active session, gently redirect them back to the active focus area.
 
-STRICT PEDAGOGICAL & SCOPE RULES:
-1. FOCUS ON CLASSIFICATION & EXAMPLES: Keep Chapter 1 strictly about naming/classifying causes and providing classical veterinary examples. Do not ask for or explain full disease mechanisms or clinical features.
-2. FOCUS ON ONE CONCEPT AT A TIME: Do not switch sub-topics until the current classification or term is clearly understood.
-3. HANDLING 'DON'T KNOW' OR INCORRECT ANSWERS:
-   - If the student says "don't know", gives an incomplete answer, or gets it wrong, DO NOT jump to a new topic.
-   - Explain the current classification briefly (1–2 sentences) with a clean veterinary example.
-   - Ask a simple follow-up question ON THE SAME CONCEPT to check understanding.
-4. SOCRATIC FEEDBACK LOOP:
-   - Praise correct reasoning and correct terminology errors using standard VCI terms.
-   - End EVERY turn with EXACTLY ONE logical question.
-   - Keep responses concise (2–3 sentences max).
+CORE PEDAGOGICAL PRINCIPLES:
+1. PROGRESSION PATTERN:
+   Familiar situation -> Curiosity -> Thinking -> Guided discovery -> Terminology -> Classification -> Application.
+   Use: EXAMPLE -> QUESTION -> THINK -> CLUE -> DISCOVER -> NAME -> APPLY.
+   Do NOT use: DEFINITION -> LONG LECTURE -> MEMORIZE.
+
+2. SOCRATIC RULE & QUESTION LIMIT:
+   - Ask EXACTLY ONE major question per turn. Never overwhelm the student with multiple questions.
+   - Do not immediately provide an answer when the student can reasonably discover it.
+   - Before outputting your response, ask yourself: "Can I make the student think for 10 seconds before I give them the answer?"
+
+3. WRONG ANSWER PROTOCOL:
+   - Never say simply "Wrong".
+   - Step 1: Acknowledge the attempt gently ("Good thinking. You identified one possible explanation.")
+   - Step 2: Give a small clue.
+   - Step 3: Allow another attempt on the SAME concept. Do not jump to a new topic.
+
+4. CORRECT ANSWER PROTOCOL:
+   - Do not merely say "Correct". Explain briefly WHY it is correct using standard VCI terms, then give another quick veterinary example to reinforce it.
+
+5. DO NOT CONFUSE CAUSE WITH MANIFESTATION:
+   - Constantly reinforce that Clinical Sign != Etiology (e.g., Diarrhea is a manifestation, whereas Rotavirus or Pesticide is the cause).
+
+6. BREVITY & COGNITIVE LOAD:
+   - Keep responses under 3 short sentences to maintain active dialogue and prevent cognitive overload.
 """
 
 # ==========================================
@@ -168,10 +184,19 @@ if "working_model" not in st.session_state:
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
-    initial_greeting = f"""Welcome {student_name}! Today we will review **{selected_chapter}**.
-
-We will focus on classifying disease causes and their classic veterinary examples. Are you ready to start?"""
     
+    # Custom initial greetings per session focus
+    if "Session 1" in selected_chapter:
+        initial_greeting = f"Welcome {student_name}! Imagine a healthy cow on a farm that suddenly becomes dull and stops eating. What are some things that could make this animal sick?"
+    elif "Session 2" in selected_chapter:
+        initial_greeting = f"Welcome back, {student_name}! If a dog develops illness after swallowing a pesticide, what kind of cause started that disease?"
+    elif "Session 3" in selected_chapter:
+        initial_greeting = f"Welcome {student_name}! If a dog comes into your clinic with severe diarrhea, is diarrhea the cause of the disease or a manifestation of the disease?"
+    elif "Session 4" in selected_chapter:
+        initial_greeting = f"Welcome {student_name}! Let's try a case: A herd of cattle suddenly develops high fever and respiratory distress. What broad etiological category would you investigate first?"
+    else:
+        initial_greeting = f"Welcome {student_name}! Can a disease in an animal be caused by more than one factor working together?"
+
     st.session_state.messages.append({"role": "assistant", "content": initial_greeting})
 
 for msg in st.session_state.messages:
@@ -181,7 +206,7 @@ for msg in st.session_state.messages:
 # ==========================================
 # 8. USER INPUT & STREAMED RESPONSE WITH AUTO-FAILOVER
 # ==========================================
-if user_prompt := st.chat_input("Type your answer or response here..."):
+if user_prompt := st.chat_input("Type your response or thoughts here..."):
     st.chat_message("user").markdown(user_prompt)
     st.session_state.messages.append({"role": "user", "content": user_prompt})
     
@@ -190,7 +215,7 @@ if user_prompt := st.chat_input("Type your answer or response here..."):
         full_response = ""
         success = False
         
-        # Capped history buffer (last 6 messages) to maintain prompt adherence
+        # Buffer containing recent messages (last 6 turns)
         recent_history = st.session_state.messages[-6:-1]
         
         candidates = [st.session_state.working_model] + get_available_models()
