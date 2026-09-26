@@ -12,6 +12,7 @@ st.set_page_config(
 )
 
 st.title("🔬 Veterinary General Pathology Tutor")
+st.subheader("Etiology & Causation of Disease")
 
 # Read Secrets
 try:
@@ -24,34 +25,34 @@ except Exception:
 genai.configure(api_key=GEMINI_API_KEY)
 
 # ==========================================
-# 2. CHAPTER & FOCUS AREA DEFINITIONS
+# 2. ETIOLOGY MODULE DEFINITIONS
 # ==========================================
 CHAPTER_PROMPTS = {
-    "1. Session 1: Why Do Animals Become Sick? (Concept of Etiology)": """
+    "Session 1: Why Do Animals Become Sick? (Concept of Etiology)": """
 STRICT BOUNDARY - SESSION 1: Why Do Animals Become Sick?
 - Focus: Generating general possibilities of why a healthy animal becomes sick. Introduce the term 'Etiology' = cause of disease.
 - DO NOT present formal classifications (Infectious, Chemical, etc.) yet.
 - DO NOT talk about lesions, pathogenesis, or organ systems.
 - Goal: Help the student realize that something must initiate a change from health to disease.
 """,
-    "2. Session 2: Can We Group the Causes? (Etiological Classification)": """
+    "Session 2: Can We Group the Causes? (Etiological Classification)": """
 STRICT BOUNDARY - SESSION 2: Etiological Categories
 - Focus: Grouping causes into broad categories (Infectious, Physical, Chemical, Nutritional, Genetic/Hereditary, Immunological, Neoplastic, Iatrogenic, Idiopathic).
 - Method: Use concrete veterinary examples FIRST (e.g., Rabies -> Infectious; Pesticide -> Chemical; Trauma -> Physical).
 - DO NOT move to clinical sign vs. cause differentiation yet. Stay focused on sorting examples into categories.
 """,
-    "3. Session 3: Same Sign, Different Cause (Cause vs. Manifestation)": """
+    "Session 3: Same Sign, Different Cause (Cause vs. Manifestation)": """
 STRICT BOUNDARY - SESSION 3: Cause vs. Manifestation
 - Focus: Clinical Sign != Etiology (e.g., Diarrhea or Jaundice is a manifestation, NOT a cause).
 - Method: Explore one clinical sign and lead the student to identify multiple completely different etiological causes for it.
 - DO NOT jump into complex diagnostic algorithms or systemic pathology.
 """,
-    "4. Session 4: You Are The Pathologist (Pathological Reasoning)": """
+    "Session 4: You Are The Pathologist (Pathological Reasoning)": """
 STRICT BOUNDARY - SESSION 4: Reasoning & Case Scenarios
 - Focus: Simple case scenarios. Ask "What broad category of cause should you consider?" and "What additional clue/information would help you decide?"
 - Keep scenarios brief and centered purely on identifying etiological possibilities.
 """,
-    "5. Session 5: Can Disease Have More Than One Cause? (Multifactorial Causation)": """
+    "Session 5: Can Disease Have More Than One Cause? (Multifactorial Causation)": """
 STRICT BOUNDARY - SESSION 5: Multifactorial Causation
 - Focus: Host-Agent-Environment interaction. Understand that disease often requires multiple contributing factors.
 - Avoid complex epidemiological jargon; keep explanations anchored in basic veterinary logic.
@@ -87,14 +88,14 @@ student_name = st.sidebar.text_input("Full Name", placeholder="e.g., Dr. Ananya"
 roll_number = st.sidebar.text_input("Roll Number / ID", placeholder="e.g., VET2026-042")
 
 selected_chapter = st.sidebar.selectbox(
-    "Select Learning Session:",
+    "Select Etiology Session:",
     list(CHAPTER_PROMPTS.keys())
 )
 
-st.caption(f"Active Session Scope: **{selected_chapter}**")
+st.caption(f"Active Scope: **{selected_chapter}**")
 
 if not student_name or not roll_number:
-    st.info("👈 Please enter your **Full Name**, **Roll Number**, and select a **Session** in the sidebar to begin.")
+    st.info("👈 Please enter your **Full Name**, **Roll Number**, and select an **Etiology Session** in the sidebar to begin.")
     st.stop()
 
 # Reset chat session if session selection changes
@@ -112,7 +113,7 @@ if st.sidebar.button("🔄 Restart Session"):
     st.rerun()
 
 # ==========================================
-# 5. INTEGRATED SYSTEM PROMPT WITH STRICT FOCUS ENFORCEMENT
+# 5. INTEGRATED SYSTEM PROMPT
 # ==========================================
 SOCRATIC_SYSTEM_PROMPT = f"""
 SYSTEM PROMPT: AI PEDAGOGICAL AGENT FOR BEGINNING GENERAL VETERINARY PATHOLOGY
