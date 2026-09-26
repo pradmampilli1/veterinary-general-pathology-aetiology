@@ -12,7 +12,6 @@ st.set_page_config(
 )
 
 st.title("🔬 Veterinary General Pathology Tutor")
-st.caption("Etiology & Causation of Diseases — Interactive Socratic Practice")
 
 # Read Secrets
 try:
@@ -25,15 +24,58 @@ except Exception:
 genai.configure(api_key=GEMINI_API_KEY)
 
 # ==========================================
-# 2. LOGGING HELPER FUNCTION
+# 2. CHAPTER SYLLABUS DEFINITIONS
 # ==========================================
-def log_to_google_sheet(student_name, roll_number, step, user_input, ai_response):
+CHAPTER_PROMPTS = {
+    "1. Etiology & Causation of Diseases": """
+STRICT TOPIC SCOPE: Chapter 1 - Etiology & Causation of Diseases
+Focus ONLY on classification of etiologic agents and brief veterinary examples. DO NOT dive into detailed pathogenesis or full disease descriptions.
+
+1. Intrinsic Predisposing Causes (Classification & Examples):
+   - Genus & Breed predisposition (e.g., Hereford cattle and ocular squamous cell carcinoma, Bulldogs and dystocia).
+   - Age, Sex, & Pigment factors (e.g., Squamous cell carcinoma in unpigmented skin).
+   - Inherited/Genetic Anomalies: Lethal factors (e.g., Atresia coli in foals) vs Sub-lethal factors (e.g., Congenital deafness in white cats).
+   - Developmental Anomalies: Basic definitions & examples of Agenesis, Hypoplasia, Aplasia, Atresia, Freemartinism, and Hermaphroditism.
+
+2. Extrinsic Exciting Causes (Classification & Examples):
+   - Physical Agents: Thermal (Burns/Frostbite), Radiation, Electricity, Atmospheric pressure (Brisket Disease / High altitude disease in cattle).
+   - Mechanical Trauma: Laceration, Concussion, Perforation, Rupture.
+   - Chemical & Biotic Agents: Toxins, Infectious microbes, Parasites (Brief naming and classification only).
+""",
+    "2. Retrograde Tissue Changes (Degenerations)": """
+STRICT TOPIC SCOPE: Chapter 2 - Retrograde Tissue Changes
+1. Cloudy swelling, Hydropic degeneration, Fatty change (Steatosis) vs Fatty infiltration.
+2. Hyaline, Amyloid, Mucoid, and Myxomatous degenerations.
+3. Pathological Calcification: Dystrophic vs Metastatic calcification.
+4. Necrosis vs Apoptosis: Types of necrosis (Coagulative, Liquefactive, Caseous, Fat necrosis, Gangrene).
+""",
+    "3. Disturbances of Circulation": """
+STRICT TOPIC SCOPE: Chapter 3 - Disturbances of Circulation
+1. Hyperemia & Congestion (Active vs Passive, Chronic Passive Congestion of Liver/Nutmeg liver and Lungs/Heart failure cells).
+2. Hemorrhage, Hemostasis, and Thrombosis (Virchow's Triad, Types of Thrombi).
+3. Embolism, Ischemia, Infarction, and Edema (Pathophysiology & Transudate vs Exudate).
+4. Shock: Hypovolemic, Cardiogenic, Vasogenic, Septic.
+""",
+    "4. Inflammation & Healing": """
+STRICT TOPIC SCOPE: Chapter 4 - Inflammation & Tissue Repair
+1. Vascular and Cellular events of Acute Inflammation (Vasodilation, Margination, Diapedesis, Chemotaxis, Phagocytosis).
+2. Chemical Mediators of Inflammation.
+3. Morphological patterns: Serous, Fibrinous, Purulent/Suppurative, Catarrhal, Hemorrhagic, Granulomatous.
+4. Tissue Repair: Granulation tissue formation, Healing by Primary & Secondary intention.
+"""
+}
+
+# ==========================================
+# 3. LOGGING HELPER FUNCTION
+# ==========================================
+def log_to_google_sheet(student_name, roll_number, chapter, step, user_input, ai_response):
     if not WEBHOOK_URL:
         return
     
     payload = {
         "name": student_name,
         "roll_number": roll_number,
+        "chapter": chapter,
         "step": step,
         "answer": user_input,
         "feedback": ai_response
@@ -45,53 +87,60 @@ def log_to_google_sheet(student_name, roll_number, step, user_input, ai_response
         pass
 
 # ==========================================
-# 3. STUDENT REGISTRATION (SIDEBAR)
+# 4. STUDENT REGISTRATION & CHAPTER SELECTION (SIDEBAR)
 # ==========================================
-st.sidebar.header("📋 Student Information")
+st.sidebar.header("📋 Student Session Setup")
 student_name = st.sidebar.text_input("Full Name", placeholder="e.g., Dr. Ananya")
 roll_number = st.sidebar.text_input("Roll Number / ID", placeholder="e.g., VET2026-042")
 
+selected_chapter = st.sidebar.selectbox(
+    "Select Pathology Chapter:",
+    list(CHAPTER_PROMPTS.keys())
+)
+
+st.caption(f"Active Topic: **{selected_chapter}**")
+
 if not student_name or not roll_number:
-    st.info("👈 Please enter your **Full Name** and **Roll Number** in the sidebar to begin the tutorial session.")
+    st.info("👈 Please enter your **Full Name**, **Roll Number**, and select a **Chapter** in the sidebar to begin.")
     st.stop()
 
-st.sidebar.success(f"Active Session: **{student_name}** ({roll_number})")
+# Reset chat session if chapter selection changes
+if "current_chapter" in st.session_state and st.session_state.current_chapter != selected_chapter:
+    for key in ["messages", "step_count"]:
+        if key in st.session_state:
+            del st.session_state[key]
 
-if st.sidebar.button("🔄 Restart Etiology Session"):
+st.session_state.current_chapter = selected_chapter
+
+if st.sidebar.button("🔄 Restart Chapter Session"):
     for key in ["messages", "step_count", "working_model"]:
         if key in st.session_state:
             del st.session_state[key]
     st.rerun()
 
 # ==========================================
-# 4. STRICT SOCRATIC SYSTEM PROMPT
+# 5. DYNAMIC SOCRATIC SYSTEM PROMPT
 # ==========================================
 SOCRATIC_SYSTEM_PROMPT = f"""
-You are an expert Veterinary Pathology Professor leading a 2nd-year BVSc & AH student named {student_name} through the VCI syllabus.
+You are an expert Veterinary Pathology Professor tutoring a 2nd-year BVSc & AH student named {student_name} under the VCI syllabus.
 
-STRICT CURRICULUM BOUNDARY:
-Your SOLE goal is to test and guide the student on "ETIOLOGY & CAUSATION OF DISEASES IN ANIMALS". Do not deviate into treatment, prognosis, or unrelated general knowledge.
+{CHAPTER_PROMPTS[selected_chapter]}
 
-TOPIC SYLLABUS TO COVER IN ORDER:
-1. Intrinsic Predisposing Causes:
-   - Species / Genus immunity (e.g., Rinderpest in cattle vs human)
-   - Breed susceptibility (e.g., Melanoma in Grey horses, Tumors in Bulldogs/Great Danes)
-   - Age susceptibility (e.g., Strangles in foals vs adult tumors)
-   - Sex & Coat pigment / Photodynamic sensitivity
-   - Genetic/Inherited anomalies (Lethal: Atresia coli; Sub-lethal: Imperforate anus, Deafness in white cats)
-   - Developmental defects (Agenesis, Hypoplasia, Freemartin, Hermaphrodite)
-2. Extrinsic Exciting Causes:
-   - Physical: Radiation, Thermal (Frostbite/Necrosis), Electricity, Atmospheric pressure (Brisket disease)
-   - Mechanical: Concussion, Perforation, Laceration
-
-PEDAGOGICAL RULES:
-- ALWAYS assess the student's answer against Etiology concepts first.
-- Praise correct intuition, correct any wrong terminology, and ask EXACTLY ONE logical follow-up question strictly related to the etiology syllabus above.
-- Never write long lectures. Keep answers under 3 short sentences.
+STRICT PEDAGOGICAL & SCOPE RULES:
+1. FOCUS ON CLASSIFICATION & EXAMPLES: Keep Chapter 1 strictly about naming/classifying causes and providing classical veterinary examples. Do not ask for or explain full disease mechanisms or clinical features.
+2. FOCUS ON ONE CONCEPT AT A TIME: Do not switch sub-topics until the current classification or term is clearly understood.
+3. HANDLING 'DON'T KNOW' OR INCORRECT ANSWERS:
+   - If the student says "don't know", gives an incomplete answer, or gets it wrong, DO NOT jump to a new topic.
+   - Explain the current classification briefly (1–2 sentences) with a clean veterinary example.
+   - Ask a simple follow-up question ON THE SAME CONCEPT to check understanding.
+4. SOCRATIC FEEDBACK LOOP:
+   - Praise correct reasoning and correct terminology errors using standard VCI terms.
+   - End EVERY turn with EXACTLY ONE logical question.
+   - Keep responses concise (2–3 sentences max).
 """
 
 # ==========================================
-# 5. DYNAMIC MODEL RETRIEVAL
+# 6. DYNAMIC MODEL RETRIEVAL
 # ==========================================
 @st.cache_resource
 def get_available_models():
@@ -108,7 +157,7 @@ def get_available_models():
         return ["gemini-1.5-flash-latest", "gemini-1.5-flash", "gemini-2.0-flash"]
 
 # ==========================================
-# 6. INITIALIZATION
+# 7. INITIALIZATION
 # ==========================================
 if "step_count" not in st.session_state:
     st.session_state.step_count = 1
@@ -119,13 +168,9 @@ if "working_model" not in st.session_state:
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
-    initial_greeting = f"""Welcome {student_name}! Today we will explore **Etiology: The Causation of Diseases in Animals**.
+    initial_greeting = f"""Welcome {student_name}! Today we will review **{selected_chapter}**.
 
-Let's start with an interesting case observation:
-
-In equine practice, an old **Grey horse** is significantly more likely to develop **Malignant Melanoma** than a bay or chestnut horse of the same age. Similarly, white-skinned animals suffer more frequently from sun-induced skin inflammation.
-
-In disease causation, would you classify coat color or breed as an **Intrinsic Predisposing Cause** or an **Extrinsic Exciting Cause** of disease? What is your reasoning?"""
+We will focus on classifying disease causes and their classic veterinary examples. Are you ready to start?"""
     
     st.session_state.messages.append({"role": "assistant", "content": initial_greeting})
 
@@ -134,9 +179,9 @@ for msg in st.session_state.messages:
         st.markdown(msg["content"])
 
 # ==========================================
-# 7. USER INPUT & CONTEXT-LIMITED STREAMING
+# 8. USER INPUT & STREAMED RESPONSE WITH AUTO-FAILOVER
 # ==========================================
-if user_prompt := st.chat_input("Type your response here..."):
+if user_prompt := st.chat_input("Type your answer or response here..."):
     st.chat_message("user").markdown(user_prompt)
     st.session_state.messages.append({"role": "user", "content": user_prompt})
     
@@ -145,7 +190,7 @@ if user_prompt := st.chat_input("Type your response here..."):
         full_response = ""
         success = False
         
-        # Truncate context to last 6 messages to prevent topic drift
+        # Capped history buffer (last 6 messages) to maintain prompt adherence
         recent_history = st.session_state.messages[-6:-1]
         
         candidates = [st.session_state.working_model] + get_available_models()
@@ -183,10 +228,11 @@ if user_prompt := st.chat_input("Type your response here..."):
             log_to_google_sheet(
                 student_name=student_name,
                 roll_number=roll_number,
+                chapter=selected_chapter,
                 step=st.session_state.step_count,
                 user_input=user_prompt,
                 ai_response=full_response
             )
             st.session_state.step_count += 1
         else:
-            st.error("Unable to reach Google API across active models. Please check your API key.")
+            st.error("Unable to reach Google API. Please check your API key.")
