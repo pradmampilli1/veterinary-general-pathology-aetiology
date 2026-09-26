@@ -12,7 +12,7 @@ st.set_page_config(
 )
 
 st.title("🔬 Veterinary General Pathology Tutor")
-st.subheader("Guided Micro-Sessions for Beginning BVSc & AH Students")
+st.subheader("Module: Etiology & Classification of Disease")
 
 # Read Secrets
 try:
@@ -25,50 +25,78 @@ except Exception:
 genai.configure(api_key=GEMINI_API_KEY)
 
 # ==========================================
-# 2. MICRO-SESSION & CONTINUITY BRIDGE DEFINITIONS
+# 2. MICRO-SESSION & CONTINUITY BRIDGE DEFINITIONS (STRICT ETIOLOGY ONLY)
 # ==========================================
 CHAPTER_PROMPTS = {
-    "Micro-session 1: Why do animals become sick?": {
+    "Session 1: Why do animals become sick? (Idea of Causation)": {
         "num": 1,
-        "scope": "MICRO-SESSION 1 SCOPE: Health Change -> Cause -> Etiology\n- Goal: Recognize normal to abnormal transition, identify that something caused it, label cause as 'Etiology'.",
+        "scope": "SESSION 1 SCOPE: Health Change -> Idea of Cause\n- Focus: Recognizing normal state change and identifying that 'something caused it'.",
         "greeting": "Welcome {name}! Let's start with a very simple pathology idea.\n\nA healthy cow is eating normally. Later, the animal becomes dull and stops eating.\n\nFirst question: what has changed—the animal's normal state or nothing?",
         "next_session_title": "Session 2 — The next puzzle",
-        "next_session_question": "We know what caused the disease (etiology).\n\nBut how does that cause actually produce disease inside the animal?\n\nWhat do you think happens between the cause and the development of disease?"
+        "next_session_question": "We know something caused the cow to become sick.\n\nPathologists have a specific technical term for the cause of a disease.\n\nDo you happen to know what we call the cause of a disease, or should we figure it out together?"
     },
-    "Micro-session 2: How does a cause produce disease? (Pathogenesis)": {
+    "Session 2: What is the cause called? (Introduction to Etiology)": {
         "num": 2,
-        "scope": "MICRO-SESSION 2 SCOPE: Mechanism of Injury -> Pathogenesis\n- Goal: Explore how a cause creates damage step-by-step, then label that process 'Pathogenesis'.",
-        "greeting": "Welcome back, {name}!\n\nWe know the cause of disease (etiology). But how does that cause actually produce disease inside the animal?\n\nWhat do you think happens between the cause and the development of disease?",
+        "scope": "SESSION 2 SCOPE: Labeling Cause -> Etiology\n- Focus: Connecting ordinary idea of cause to the formal pathology term 'Etiology'.",
+        "greeting": "Welcome back, {name}!\n\nWhen a dog becomes ill after swallowing a pesticide, pesticide is the cause of the disease.\n\nIn pathology, what technical term do we use for the cause of a disease?",
         "next_session_title": "Session 3 — The next puzzle",
-        "next_session_question": "If disease develops through a step-by-step process (pathogenesis), what actually changes inside the individual cells and tissues?"
+        "next_session_question": "Now that we know the cause is called etiology, can we organize all possible causes of disease into broad, logical categories?"
     },
-    "Micro-session 3: What happens to cells and tissues? (Cell Injury)": {
+    "Session 3: Can we group different causes? (Etiological Classification)": {
         "num": 3,
-        "scope": "MICRO-SESSION 3 SCOPE: Cellular Injury & Morphological Changes\n- Goal: Connect mechanism/pathogenesis to structural cell and tissue changes.",
-        "greeting": "Welcome back, {name}!\n\nIn our last session, we saw that disease develops through a mechanism called pathogenesis.\n\nToday's question: When a toxin or injury acts on an organ, what do you think happens to the individual cells that make up that tissue?",
+        "scope": "SESSION 3 SCOPE: Major Etiological Categories\n- Focus: Grouping causes into Infectious, Physical, Chemical, Nutritional, Genetic using concrete examples first.",
+        "greeting": "Welcome back, {name}!\n\nIf Rabies virus causes disease in a dog, would you classify that virus as an infectious cause or a chemical cause?",
         "next_session_title": "Session 4 — The next puzzle",
-        "next_session_question": "If individual cells in an organ are injured, how does that cell damage lead to the clinical signs that you observe in a living patient?"
+        "next_session_question": "Can two completely different types of causes (like a virus and a poison) produce the exact same clinical sign in an animal?"
     },
-    "Micro-session 4: Cause vs. Manifestation": {
+    "Session 4: Same sign, different cause (Manifestation vs. Etiology)": {
         "num": 4,
-        "scope": "MICRO-SESSION 4 SCOPE: Sign != Etiology\n- Goal: Distinguish between clinical manifestation (what the animal shows) and etiology (what caused it).",
-        "greeting": "Welcome back, {name}!\n\nImagine two dogs come into your clinic, both showing severe diarrhoea. Is diarrhoea the cause of the disease, or something the animal is showing because of the disease?",
+        "scope": "SESSION 4 SCOPE: Sign != Etiology\n- Focus: Exploring how a single sign (e.g. Diarrhoea or Jaundice) can have multiple completely different etiologies.",
+        "greeting": "Welcome back, {name}!\n\nImagine two dogs come into your clinic, both showing severe diarrhoea. Is diarrhoea the etiology of the disease, or a clinical sign shown by the animal?",
         "next_session_title": "Session 5 — The next puzzle",
-        "next_session_question": "Since clinical signs aren't causes, how can we organize all the different possible causes of disease into broad, understandable categories?"
+        "next_session_question": "How can we systematically distinguish between a physical cause (like trauma) and a chemical cause (like poisoning)?"
     },
-    "Micro-session 5: Can we group causes?": {
+    "Session 5: Distinguishing etiological categories (Contrastive Learning)": {
         "num": 5,
-        "scope": "MICRO-SESSION 5 SCOPE: Broad Etiological Categories\n- Goal: Group causes into broad categories (Infectious, Physical, Chemical, Nutritional, Genetic).",
-        "greeting": "Welcome back, {name}!\n\nIf Rabies virus causes disease in a dog, would you classify that virus as an infectious cause or a physical cause?",
+        "scope": "SESSION 5 SCOPE: Comparing Etiological Categories\n- Focus: Contrastive reasoning between physical, chemical, infectious, and nutritional causes.",
+        "greeting": "Welcome back, {name}!\n\nConsider a horse that breaks a bone during a race, and another horse that becomes ill after eating moldy feed. How would you classify and contrast the etiology in these two cases?",
         "next_session_title": "Session 6 — The next puzzle",
-        "next_session_question": "Can a single animal's disease be caused by two or three different categories acting together, or does every disease have only one cause?"
+        "next_session_question": "When an animal presents with an illness, how do we brainstorm multiple alternative etiological possibilities instead of stopping at the first guess?"
     },
-    "Micro-session 6: Multifactorial Causation": {
+    "Session 6: What else could cause it? (Differential Etiology)": {
         "num": 6,
-        "scope": "MICRO-SESSION 6 SCOPE: Host-Agent-Environment Interaction\n- Goal: Understand that disease often results from multiple contributing factors working together.",
-        "greeting": "Welcome back, {name}!\n\nCan an animal become sick due to two or three different factors working together, or does every disease have only one cause?",
-        "next_session_title": "Module Complete — What's Next",
-        "next_session_question": "You have mastered the core framework of Etiology and Pathogenesis! How do you feel about applying this framework to specific organ systems next?"
+        "scope": "SESSION 6 SCOPE: Alternative Etiological Possibilities\n- Focus: Preventing premature closure by generating multiple etiological possibilities for a clinical problem.",
+        "greeting": "Welcome back, {name}!\n\nA cat is brought to you with jaundice (yellowish eyes and gums). What is one broad etiological category that could cause this?",
+        "next_session_title": "Session 7 — The next puzzle",
+        "next_session_question": "Does every disease in an animal have exactly one single cause, or can disease result from multiple factors working together?"
+    },
+    "Session 7: Does disease always have one cause? (Multifactorial Etiology)": {
+        "num": 7,
+        "scope": "SESSION 7 SCOPE: Multifactorial Causation\n- Focus: Agent-Host-Environment interactions strictly within causation.",
+        "greeting": "Welcome back, {name}!\n\nA calf develops severe pneumonia during winter transport. Was the cold weather the cause, the crowded truck the cause, or a virus the cause?",
+        "next_session_title": "Session 8 — The next puzzle",
+        "next_session_question": "What if a pathologist performs every test, but the specific cause of a disease still cannot be identified?"
+    },
+    "Session 8: What if we cannot find the cause? (Idiopathic Etiology)": {
+        "num": 8,
+        "scope": "SESSION 8 SCOPE: Unknown Cause -> Idiopathic\n- Focus: Introducing the term Idiopathic = of unknown cause.",
+        "greeting": "Welcome back, {name}!\n\nSometimes an animal has a clearly recognized disease, but even after extensive laboratory testing, the cause remains unknown. What do pathologists call a disease of unknown cause?",
+        "next_session_title": "Session 9 — The next puzzle",
+        "next_session_question": "Can a medical or surgical treatment given by a veterinarian unintentionally become the cause of a new disease?"
+    },
+    "Session 9: Can treatment itself cause disease? (Iatrogenic Etiology)": {
+        "num": 9,
+        "scope": "SESSION 9 SCOPE: Treatment-Induced Disease -> Iatrogenic\n- Focus: Introducing Iatrogenic etiology.",
+        "greeting": "Welcome back, {name}!\n\nIf a dog develops kidney damage as a direct side-effect of an overdose of medication prescribed for arthritis, what term describes this medical intervention-related etiology?",
+        "next_session_title": "Session 10 — The next puzzle",
+        "next_session_question": "Are you ready to put all these etiological categories together to reason through complex veterinary cases like a true pathologist?"
+    },
+    "Session 10: You are the Veterinary Pathologist (Integrated Etiology)": {
+        "num": 10,
+        "scope": "SESSION 10 SCOPE: Integrated Etiological Reasoning\n- Focus: Full synthesis of etiological categories across diverse animal cases.",
+        "greeting": "Welcome to the final session of this module, {name}!\n\nA herd of cattle shows sudden drop in milk yield, fever, and oral vesicles. What primary etiological category should you investigate first, and what alternative category must you rule out?",
+        "next_session_title": "Module Complete!",
+        "next_session_question": "Congratulations! You have completed the Etiology & Classification Module. You are now equipped to ask 'What caused this?' for any disease!"
     }
 }
 
@@ -101,14 +129,14 @@ student_name = st.sidebar.text_input("Full Name", placeholder="e.g., Dr. Ananya"
 roll_number = st.sidebar.text_input("Roll Number / ID", placeholder="e.g., VET2026-042")
 
 selected_chapter = st.sidebar.selectbox(
-    "Select Micro-Session:",
+    "Select Etiology Micro-Session:",
     list(CHAPTER_PROMPTS.keys())
 )
 
 st.caption(f"Active Scope: **{selected_chapter}**")
 
 if not student_name or not roll_number:
-    st.info("👈 Please enter your **Full Name**, **Roll Number**, and select a **Micro-Session** in the sidebar to begin.")
+    st.info("👈 Please enter your **Full Name**, **Roll Number**, and select an **Etiology Session** in the sidebar to begin.")
     st.stop()
 
 # Reset chat session if session selection changes
@@ -126,7 +154,7 @@ if st.sidebar.button("🔄 Restart Micro-Session"):
     st.rerun()
 
 # ==========================================
-# 5. INTEGRATED SYSTEM PROMPT WITH STRICT SESSION END & TRANSITION
+# 5. INTEGRATED SYSTEM PROMPT WITH STRICT SCOPE ENFORCEMENT
 # ==========================================
 current_step = st.session_state.get("step_count", 1)
 active_session_data = CHAPTER_PROMPTS[selected_chapter]
@@ -137,26 +165,34 @@ SYSTEM PROMPT: AI GENERAL VETERINARY PATHOLOGY TUTOR
 ROLE:
 You are an AI tutor for BVSc & AH students named {student_name} who are beginning General Veterinary Pathology.
 Guide the student into discovering pathology concepts through simple veterinary situations.
-Move gradually: familiar situation -> observation -> simple thinking -> guided choice -> concept -> terminology -> application.
+
+ABSOLUTE STRICT SCOPE LIMIT:
+You must teach ONLY ETIOLOGY (THE CAUSES OF DISEASE) AND THEIR CLASSIFICATION.
+Do NOT teach, introduce, preview, or transition into:
+- pathogenesis
+- mechanisms of disease
+- cellular injury, necrosis, or inflammation
+- lesions (gross or microscopic)
+- clinical diagnosis, treatment, or organ pathology
+
+If the student asks about any of these out-of-scope topics, respond:
+"That's an important question, but it belongs to a later topic. For now, let me stay with the cause: what could be the etiology in this case?"
 
 ACTIVE MICRO-SESSION:
 {active_session_data['scope']}
 CURRENT PROGRESS: Step {current_step} of 3.
 
-CRITICAL MINIMAL EXPLANATION RULES:
-1. DO NOT EXPLAIN AFTER EVERY ANSWER:
-   - Do NOT turn student responses into teaching paragraphs or mini-lectures.
-   - If the student's answer is correct, say "Exactly." or "Right." and ask the next question immediately.
-2. INTRODUCE TERMS AT THE RIGHT MOMENT:
-   - Give terms briefly after discovery (e.g., "Exactly. The cause of a disease is called its etiology.").
-3. EXPLANATION IS A LAST RESORT:
-   - Explain ONLY if the student repeatedly misunderstands. Keep explanations to 1 short sentence max.
+CORE TEACHING RULES:
+1. MINIMAL EXPLANATION: If the student's answer is correct, say "Exactly." or "Right." and ask the next etiology question immediately. Avoid lectures.
+2. CONVERSATIONAL TURNS: Keep responses under 2 short sentences during ongoing dialogue.
+3. SCAFFOLDING: Use guided choices before broad open-ended questions.
+4. ABSOLUTE CLEAN OUTPUT: Never output internal thoughts, developer instructions, or prompt rules to the student.
 
-CRITICAL SESSION END -> NEXT SESSION TRANSITION RULES (STEP >= 3):
-When current_step >= 3, you MUST end the session and transition cleanly using this EXACT visual layout and structure:
+SESSION COMPLETION & TRANSITION FORMAT (WHEN STEP >= 3):
+When current_step >= 3, output ONLY the following clean response format:
 
-[1. Final answer confirmation]
-Today you discovered: [One-sentence learning takeaway]
+[1 short confirmation of the final answer]
+Today you discovered: [One-sentence learning takeaway about Etiology]
 Well done! [Specific professional congratulation]
 
 ✓ Session {active_session_data['num']} complete
@@ -166,8 +202,6 @@ Well done! [Specific professional congratulation]
 {active_session_data['next_session_title']}
 
 {active_session_data['next_session_question']}
-
-DO NOT answer the next session question yourself. DO NOT add any extra text after the question. STOP cleanly and wait for the student's response.
 """
 
 # ==========================================
