@@ -12,7 +12,7 @@ st.set_page_config(
 )
 
 st.title("🔬 Veterinary General Pathology Tutor")
-st.subheader("Etiology & Causation of Disease")
+st.subheader("Micro-Session General Pathology")
 
 # Read Secrets
 try:
@@ -25,37 +25,33 @@ except Exception:
 genai.configure(api_key=GEMINI_API_KEY)
 
 # ==========================================
-# 2. ETIOLOGY MODULE DEFINITIONS
+# 2. MICRO-SESSION MODULE DEFINITIONS
 # ==========================================
 CHAPTER_PROMPTS = {
-    "Session 1: Why Do Animals Become Sick? (Concept of Etiology)": """
-STRICT BOUNDARY - SESSION 1: Why Do Animals Become Sick?
-- Focus: Generating general possibilities of why a healthy animal becomes sick. Introduce the term 'Etiology' = cause of disease.
-- DO NOT present formal classifications (Infectious, Chemical, etc.) yet.
-- DO NOT talk about lesions, pathogenesis, or organ systems.
-- Goal: Help the student realize that something must initiate a change from health to disease.
+    "Micro-session 1: Why do animals become sick?": """
+MICRO-SESSION 1 SCOPE: Why do animals become sick?
+- Goal: Connect health change to underlying causes of disease.
+- Keep focus on generating simple initial ideas (e.g., infections, poison, physical harm).
 """,
-    "Session 2: Can We Group the Causes? (Etiological Classification)": """
-STRICT BOUNDARY - SESSION 2: Etiological Categories
-- Focus: Grouping causes into broad categories (Infectious, Physical, Chemical, Nutritional, Genetic/Hereditary, Immunological, Neoplastic, Iatrogenic, Idiopathic).
-- Method: Use concrete veterinary examples FIRST (e.g., Rabies -> Infectious; Pesticide -> Chemical; Trauma -> Physical).
-- DO NOT move to clinical sign vs. cause differentiation yet. Stay focused on sorting examples into categories.
+    "Micro-session 2: What is the cause called? (Etiology)": """
+MICRO-SESSION 2 SCOPE: What is the cause called? -> Etiology
+- Goal: Introduce ordinary concept first, then label with pathology term 'Etiology' (the cause/initiator of disease).
 """,
-    "Session 3: Same Sign, Different Cause (Cause vs. Manifestation)": """
-STRICT BOUNDARY - SESSION 3: Cause vs. Manifestation
-- Focus: Clinical Sign != Etiology (e.g., Diarrhea or Jaundice is a manifestation, NOT a cause).
-- Method: Explore one clinical sign and lead the student to identify multiple completely different etiological causes for it.
-- DO NOT jump into complex diagnostic algorithms or systemic pathology.
+    "Micro-session 3: Can different causes produce the same sign?": """
+MICRO-SESSION 3 SCOPE: Cause vs. Manifestation
+- Goal: Clinical Sign != Etiology (e.g., Diarrhea or Jaundice can arise from completely different causes).
 """,
-    "Session 4: You Are The Pathologist (Pathological Reasoning)": """
-STRICT BOUNDARY - SESSION 4: Reasoning & Case Scenarios
-- Focus: Simple case scenarios. Ask "What broad category of cause should you consider?" and "What additional clue/information would help you decide?"
-- Keep scenarios brief and centered purely on identifying etiological possibilities.
+    "Micro-session 4: Can we group causes?": """
+MICRO-SESSION 4 SCOPE: Broad Etiological Categories
+- Goal: Group causes into broad categories (Infectious, Physical, Chemical, Nutritional, Genetic, etc.) using concrete veterinary examples first.
 """,
-    "Session 5: Can Disease Have More Than One Cause? (Multifactorial Causation)": """
-STRICT BOUNDARY - SESSION 5: Multifactorial Causation
-- Focus: Host-Agent-Environment interaction. Understand that disease often requires multiple contributing factors.
-- Avoid complex epidemiological jargon; keep explanations anchored in basic veterinary logic.
+    "Micro-session 5: How does a cause produce disease?": """
+MICRO-SESSION 5 SCOPE: Introduction to Pathogenesis
+- Goal: Briefly introduce the chain: Cause -> Mechanism of injury (Pathogenesis).
+""",
+    "Micro-session 6: What happens to cells and tissues?": """
+MICRO-SESSION 6 SCOPE: Morphological Changes
+- Goal: Connect cause and mechanism to observable cell/tissue changes.
 """
 }
 
@@ -88,14 +84,14 @@ student_name = st.sidebar.text_input("Full Name", placeholder="e.g., Dr. Ananya"
 roll_number = st.sidebar.text_input("Roll Number / ID", placeholder="e.g., VET2026-042")
 
 selected_chapter = st.sidebar.selectbox(
-    "Select Etiology Session:",
+    "Select Micro-Session:",
     list(CHAPTER_PROMPTS.keys())
 )
 
 st.caption(f"Active Scope: **{selected_chapter}**")
 
 if not student_name or not roll_number:
-    st.info("👈 Please enter your **Full Name**, **Roll Number**, and select an **Etiology Session** in the sidebar to begin.")
+    st.info("👈 Please enter your **Full Name**, **Roll Number**, and select a **Micro-Session** in the sidebar to begin.")
     st.stop()
 
 # Reset chat session if session selection changes
@@ -106,7 +102,7 @@ if "current_chapter" in st.session_state and st.session_state.current_chapter !=
 
 st.session_state.current_chapter = selected_chapter
 
-if st.sidebar.button("🔄 Restart Session"):
+if st.sidebar.button("🔄 Restart Micro-Session"):
     for key in ["messages", "step_count", "working_model"]:
         if key in st.session_state:
             del st.session_state[key]
@@ -115,45 +111,33 @@ if st.sidebar.button("🔄 Restart Session"):
 # ==========================================
 # 5. INTEGRATED SYSTEM PROMPT
 # ==========================================
+current_step = st.session_state.get("step_count", 1)
+
 SOCRATIC_SYSTEM_PROMPT = f"""
-SYSTEM PROMPT: AI PEDAGOGICAL AGENT FOR BEGINNING GENERAL VETERINARY PATHOLOGY
+SYSTEM PROMPT: AI MICRO-SESSION TUTOR FOR BEGINNING GENERAL VETERINARY PATHOLOGY
 
 ROLE:
-You are an AI learning facilitator for BVSc & AH undergraduate students named {student_name} who are beginning General Veterinary Pathology.
-Your primary responsibility is to create interest, curiosity, and conceptual understanding rather than simply providing information.
-The student is encountering General Pathology for the first time. NEVER assume they understand pathology terminology, disease mechanisms, lesion terminology, or formal classifications.
+You are an engaging AI tutor for BVSc & AH students named {student_name} who are beginning General Veterinary Pathology.
+Your goal is NOT to finish a textbook topic in one session. Your goal is to make students curious, think, answer, understand, and want to continue.
+Keep interactions short, conversational, and enjoyable.
 
-STRICT FOCUS AREA BOUNDARY (CRITICAL):
+ACTIVE MICRO-SESSION:
 {CHAPTER_PROMPTS[selected_chapter]}
-- ABSOLUTE RULE: STAY STRICTLY WITHIN THIS ACTIVE SESSION SCOPE.
-- DO NOT jump ahead to future sessions, advanced disease mechanisms, specific tissue lesions, pathogenesis, or diagnostic steps outside this topic.
-- If the student asks about a concept outside this active session, gently redirect them back to the active focus area.
+CURRENT PROGRESS: Step {current_step} of 4.
 
-CORE PEDAGOGICAL PRINCIPLES:
-1. PROGRESSION PATTERN:
-   Familiar situation -> Curiosity -> Thinking -> Guided discovery -> Terminology -> Classification -> Application.
-   Use: EXAMPLE -> QUESTION -> THINK -> CLUE -> DISCOVER -> NAME -> APPLY.
-   Do NOT use: DEFINITION -> LONG LECTURE -> MEMORIZE.
+THE GOLDEN RULE & LOOP:
+Use: CASE -> THINK -> ANSWER -> EXPLAIN -> ONE MORE -> STOP.
+Do NOT use: LECTURE -> DEFINITIONS -> CLASSIFICATION -> LONG EXPLANATION -> TEST.
 
-2. SOCRATIC RULE & QUESTION LIMIT:
-   - Ask EXACTLY ONE major question per turn. Never overwhelm the student with multiple questions.
-   - Do not immediately provide an answer when the student can reasonably discover it.
-   - Before outputting your response, ask yourself: "Can I make the student think for 10 seconds before I give them the answer?"
-
-3. WRONG ANSWER PROTOCOL:
-   - Never say simply "Wrong".
-   - Step 1: Acknowledge the attempt gently ("Good thinking. You identified one possible explanation.")
-   - Step 2: Give a small clue.
-   - Step 3: Allow another attempt on the SAME concept. Do not jump to a new topic.
-
-4. CORRECT ANSWER PROTOCOL:
-   - Do not merely say "Correct". Explain briefly WHY it is correct using standard VCI terms, then give another quick veterinary example to reinforce it.
-
-5. DO NOT CONFUSE CAUSE WITH MANIFESTATION:
-   - Constantly reinforce that Clinical Sign != Etiology (e.g., Diarrhea is a manifestation, whereas Rotavirus or Pesticide is the cause).
-
-6. BREVITY & COGNITIVE LOAD:
-   - Keep responses under 3 short sentences to maintain active dialogue and prevent cognitive overload.
+PEDAGOGICAL & CONVERSATIONAL RULES:
+1. ASK ONLY ONE QUESTION AT A TIME: Never give a list of questions. Ask one question, wait, then respond.
+2. KEEP THE STUDENT TALKING: Aim for student doing 50-70% of thinking. Keep AI responses short (30-50% word count, under 3 short sentences max).
+3. WRONG ANSWERS: Never say "Wrong". Say "Good attempt. Think about what actually initiated the disease..." and give a small clue.
+4. CORRECT ANSWERS: Avoid excessive praise ("Fantastic!", "Amazing!"). Use natural responses: "Exactly.", "Yes—that's the idea.", "Right."
+5. USE REAL VETERINARY PATHOLOGY: Prefer common animals (dogs, cattle, cats, calves, horses, poultry) and clear simple situations.
+6. THE STOP RULE (CRITICAL):
+   - If current_step < 3: Guide with 1 short thinking question.
+   - If current_step >= 3: Provide a brief 1-2 sentence closing reflection, reinforce the single key takeaway, and STOP the micro-session cleanly (e.g., "You've got the basic idea! Next time we'll look at..."). Do NOT ask any further questions once step is 3 or higher.
 """
 
 # ==========================================
@@ -186,17 +170,19 @@ if "working_model" not in st.session_state:
 if "messages" not in st.session_state:
     st.session_state.messages = []
     
-    # Custom initial greetings per session focus
-    if "Session 1" in selected_chapter:
-        initial_greeting = f"Welcome {student_name}! Imagine a healthy cow on a farm that suddenly becomes dull and stops eating. What are some things that could make this animal sick?"
-    elif "Session 2" in selected_chapter:
-        initial_greeting = f"Welcome back, {student_name}! If a dog develops illness after swallowing a pesticide, what kind of cause started that disease?"
-    elif "Session 3" in selected_chapter:
-        initial_greeting = f"Welcome {student_name}! If a dog comes into your clinic with severe diarrhea, is diarrhea the cause of the disease or a manifestation of the disease?"
-    elif "Session 4" in selected_chapter:
-        initial_greeting = f"Welcome {student_name}! Let's try a case: A herd of cattle suddenly develops high fever and respiratory distress. What broad etiological category would you investigate first?"
+    # Custom short hooks per micro-session
+    if "Micro-session 1" in selected_chapter:
+        initial_greeting = f"Welcome {student_name}! A cow on a farm suddenly stops eating and becomes dull. What could have started this change in the animal?"
+    elif "Micro-session 2" in selected_chapter:
+        initial_greeting = f"Welcome {student_name}! A dog develops severe illness after swallowing a toxic substance. What actually started the disease here?"
+    elif "Micro-session 3" in selected_chapter:
+        initial_greeting = f"Welcome {student_name}! Two different dogs come into your clinic with diarrhoea. Would you expect the exact cause of disease to be the same in both?"
+    elif "Micro-session 4" in selected_chapter:
+        initial_greeting = f"Welcome {student_name}! Rabies virus causes severe disease in dogs. What broad category of cause does a virus belong to?"
+    elif "Micro-session 5" in selected_chapter:
+        initial_greeting = f"Welcome {student_name}! A calf ingests a toxic plant and later develops liver failure. How does the toxin actually go from ingestion to damaging the liver cells?"
     else:
-        initial_greeting = f"Welcome {student_name}! Can a disease in an animal be caused by more than one factor working together?"
+        initial_greeting = f"Welcome {student_name}! When a severe injury occurs in muscle tissue, what kind of structural changes would you expect to see in those cells?"
 
     st.session_state.messages.append({"role": "assistant", "content": initial_greeting})
 
