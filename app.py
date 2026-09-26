@@ -29,34 +29,46 @@ genai.configure(api_key=GEMINI_API_KEY)
 # ==========================================
 CHAPTER_PROMPTS = {
     "Micro-session 1: Why do animals become sick?": {
+        "num": 1,
         "scope": "MICRO-SESSION 1 SCOPE: Health Change -> Cause -> Etiology\n- Goal: Recognize normal to abnormal transition, identify that something caused it, label cause as 'Etiology'.",
         "greeting": "Welcome {name}! Let's start with a very simple pathology idea.\n\nA healthy cow is eating normally. Later, the animal becomes dull and stops eating.\n\nFirst question: what has changed—the animal's normal state or nothing?",
-        "bridge_puzzle": "We know what caused the disease (etiology)—but how does that cause actually produce disease inside the animal?"
+        "next_session_title": "Session 2 — The next puzzle",
+        "next_session_question": "We know what caused the disease (etiology).\n\nBut how does that cause actually produce disease inside the animal?\n\nWhat do you think happens between the cause and the development of disease?"
     },
     "Micro-session 2: How does a cause produce disease? (Pathogenesis)": {
+        "num": 2,
         "scope": "MICRO-SESSION 2 SCOPE: Mechanism of Injury -> Pathogenesis\n- Goal: Explore how a cause creates damage step-by-step, then label that process 'Pathogenesis'.",
-        "greeting": "Welcome back, {name}! Last time, you discovered that the cause of disease is called etiology.\n\nLet's take the next step: A toxin enters an animal's body. The toxin is the cause, but how could that chemical actually turn into damage inside the body? What do you think happens between the cause and the final disease?",
-        "bridge_puzzle": "If disease develops through a mechanism (pathogenesis), what actually changes inside the individual cells and tissues?"
+        "greeting": "Welcome back, {name}!\n\nWe know the cause of disease (etiology). But how does that cause actually produce disease inside the animal?\n\nWhat do you think happens between the cause and the development of disease?",
+        "next_session_title": "Session 3 — The next puzzle",
+        "next_session_question": "If disease develops through a step-by-step process (pathogenesis), what actually changes inside the individual cells and tissues?"
     },
     "Micro-session 3: What happens to cells and tissues? (Cell Injury)": {
+        "num": 3,
         "scope": "MICRO-SESSION 3 SCOPE: Cellular Injury & Morphological Changes\n- Goal: Connect mechanism/pathogenesis to structural cell and tissue changes.",
-        "greeting": "Welcome back, {name}! In our last session, we saw that disease develops through a step-by-step mechanism called pathogenesis.\n\nToday's question: When a toxin or injury acts on an organ, what do you think happens to the individual cells that make up that tissue?",
-        "bridge_puzzle": "If individual cells in an organ are injured, how does that cell damage lead to clinical signs that you observe in the living animal?"
+        "greeting": "Welcome back, {name}!\n\nIn our last session, we saw that disease develops through a mechanism called pathogenesis.\n\nToday's question: When a toxin or injury acts on an organ, what do you think happens to the individual cells that make up that tissue?",
+        "next_session_title": "Session 4 — The next puzzle",
+        "next_session_question": "If individual cells in an organ are injured, how does that cell damage lead to the clinical signs that you observe in a living patient?"
     },
     "Micro-session 4: Cause vs. Manifestation": {
+        "num": 4,
         "scope": "MICRO-SESSION 4 SCOPE: Sign != Etiology\n- Goal: Distinguish between clinical manifestation (what the animal shows) and etiology (what caused it).",
-        "greeting": "Welcome back, {name}! Today we tackle a critical question every veterinarian asks.\n\nImagine two dogs come into your clinic, both showing severe diarrhoea. Is diarrhoea the cause of the disease, or something the animal is showing because of the disease?",
-        "bridge_puzzle": "Since clinical signs aren't causes, how can we organize all the different possible causes into broad, understandable groups?"
+        "greeting": "Welcome back, {name}!\n\nImagine two dogs come into your clinic, both showing severe diarrhoea. Is diarrhoea the cause of the disease, or something the animal is showing because of the disease?",
+        "next_session_title": "Session 5 — The next puzzle",
+        "next_session_question": "Since clinical signs aren't causes, how can we organize all the different possible causes of disease into broad, understandable categories?"
     },
     "Micro-session 5: Can we group causes?": {
+        "num": 5,
         "scope": "MICRO-SESSION 5 SCOPE: Broad Etiological Categories\n- Goal: Group causes into broad categories (Infectious, Physical, Chemical, Nutritional, Genetic).",
-        "greeting": "Welcome back, {name}! Last time, you discovered that diarrhoea is a sign, but its cause could be many different things.\n\nToday: If Rabies virus causes disease in a dog, would you classify that virus as an infectious cause or a physical cause?",
-        "bridge_puzzle": "Can a single animal's disease be caused by more than one of these categories acting together?"
+        "greeting": "Welcome back, {name}!\n\nIf Rabies virus causes disease in a dog, would you classify that virus as an infectious cause or a physical cause?",
+        "next_session_title": "Session 6 — The next puzzle",
+        "next_session_question": "Can a single animal's disease be caused by two or three different categories acting together, or does every disease have only one cause?"
     },
     "Micro-session 6: Multifactorial Causation": {
+        "num": 6,
         "scope": "MICRO-SESSION 6 SCOPE: Host-Agent-Environment Interaction\n- Goal: Understand that disease often results from multiple contributing factors working together.",
-        "greeting": "Welcome back, {name}! So far we've looked at single causes like viruses or toxins.\n\nToday's puzzle: Can an animal become sick due to two or three different factors working together, or does every disease have only one cause?",
-        "bridge_puzzle": "You have mastered the core framework of Etiology and Pathogenesis! Next time, we'll begin investigating specific cell injury patterns."
+        "greeting": "Welcome back, {name}!\n\nCan an animal become sick due to two or three different factors working together, or does every disease have only one cause?",
+        "next_session_title": "Module Complete — What's Next",
+        "next_session_question": "You have mastered the core framework of Etiology and Pathogenesis! How do you feel about applying this framework to specific organ systems next?"
     }
 }
 
@@ -114,7 +126,7 @@ if st.sidebar.button("🔄 Restart Micro-Session"):
     st.rerun()
 
 # ==========================================
-# 5. INTEGRATED SYSTEM PROMPT WITH CONTINUITY RULES
+# 5. INTEGRATED SYSTEM PROMPT WITH STRICT SESSION END & TRANSITION
 # ==========================================
 current_step = st.session_state.get("step_count", 1)
 active_session_data = CHAPTER_PROMPTS[selected_chapter]
@@ -124,7 +136,7 @@ SYSTEM PROMPT: AI GENERAL VETERINARY PATHOLOGY TUTOR
 
 ROLE:
 You are an AI tutor for BVSc & AH students named {student_name} who are beginning General Veterinary Pathology.
-Your job is not to deliver a lecture, but to guide the student into discovering pathology concepts through simple veterinary situations.
+Guide the student into discovering pathology concepts through simple veterinary situations.
 Move gradually: familiar situation -> observation -> simple thinking -> guided choice -> concept -> terminology -> application.
 
 ACTIVE MICRO-SESSION:
@@ -134,31 +146,28 @@ CURRENT PROGRESS: Step {current_step} of 3.
 CRITICAL MINIMAL EXPLANATION RULES:
 1. DO NOT EXPLAIN AFTER EVERY ANSWER:
    - Do NOT turn student responses into teaching paragraphs or mini-lectures.
-   - If the student's answer is correct, do NOT explain why unless requested. Simply say "Exactly." or "Right." and ask the next question immediately.
-   - Before explaining anything, ask yourself: "Can the student discover this through the next question?" If YES, ask the question instead.
+   - If the student's answer is correct, say "Exactly." or "Right." and ask the next question immediately.
 2. INTRODUCE TERMS AT THE RIGHT MOMENT:
-   - Give terms very briefly after discovery (e.g., "Exactly. The cause of a disease is called its etiology."). Then immediately give an application question.
+   - Give terms briefly after discovery (e.g., "Exactly. The cause of a disease is called its etiology.").
 3. EXPLANATION IS A LAST RESORT:
-   - Explain ONLY if the student repeatedly misunderstands or explicitly asks. Keep explanations to 1 short sentence max.
+   - Explain ONLY if the student repeatedly misunderstands. Keep explanations to 1 short sentence max.
 
-PEDAGOGICAL & SCAFFOLDING RULES:
-1. NEVER START ABRUPTLY & GIVE A CLEAR THINKING TARGET:
-   - Establish purpose first. Avoid vague open questions. Prefer guided choices for beginners.
-2. HANDLING "I DON'T KNOW":
-   - NEVER give random guesses. Simplify into 2-3 concrete choices or a familiar example.
-3. CONVERSATIONAL TURNS:
-   - Keep responses under 2 short sentences during active discussion. Avoid over-praise.
+CRITICAL SESSION END -> NEXT SESSION TRANSITION RULES (STEP >= 3):
+When current_step >= 3, you MUST end the session and transition cleanly using this EXACT visual layout and structure:
 
-SESSION COMPLETION & CURIOSITY BRIDGE RULES (STEP >= 3):
-When current_step >= 3, conclude the micro-session cleanly using this EXACT short format:
+[1. Final answer confirmation]
+Today you discovered: [One-sentence learning takeaway]
+Well done! [Specific professional congratulation]
 
-Today you discovered: [One sentence describing the key concept discovered today]
-Well done: [One personalized, professional congratulatory statement based on their performance]
-Next puzzle: {active_session_data['bridge_puzzle']}
+✓ Session {active_session_data['num']} complete
 
-✓ Session complete
+---
 
-DO NOT ask any more questions or add another case once step >= 3. STOP cleanly.
+{active_session_data['next_session_title']}
+
+{active_session_data['next_session_question']}
+
+DO NOT answer the next session question yourself. DO NOT add any extra text after the question. STOP cleanly and wait for the student's response.
 """
 
 # ==========================================
