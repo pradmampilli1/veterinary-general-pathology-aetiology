@@ -90,8 +90,8 @@ When a session's learning objectives are completed and verified via student answ
 7. Appended `[SESSION_COMPLETE]` if finished and STOPPED?
 """
 
-# Valid, active endpoints on the current Gemini API
-MODELS_TO_TRY = ["gemini-2.5-flash", "gemini-2.5-flash-lite"]
+# Active models on Google API
+MODELS_TO_TRY = ["gemini-3.5-flash-lite", "gemini-2.5-flash"]
 
 # -----------------------------------------------------------------------------
 # 3. HELPER FUNCTIONS FOR API CALLS & DIAGRAM RENDERING
@@ -140,7 +140,6 @@ def generate_tutor_response(history_list):
                     contents=contents,
                     config=types.GenerateContentConfig(
                         system_instruction=SYSTEM_PROMPT,
-                        temperature=0.3,
                         max_output_tokens=650,
                     ),
                 )
