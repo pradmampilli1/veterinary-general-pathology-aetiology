@@ -43,11 +43,12 @@ if "bystander_mode" not in st.session_state:
     st.session_state.bystander_mode = False
 
 # -----------------------------------------------------------------------------
-# 3. INSTANT LOGIN SCREEN (NO HEAVY API CALLS HERE)
+# 3. ISOLATED STUDENT LOGIN SCREEN
 # -----------------------------------------------------------------------------
 if not st.session_state.student_logged_in:
     st.title("🐾 General Veterinary Pathology AI Tutor")
     st.caption("Module: Etiology and Classification of Disease (BVSc & AH)")
+    st.markdown("*Department of Veterinary Pathology, CVAS, Pookode*")
     st.write("---")
     
     st.subheader("👨‍🎓 Student Access Login")
@@ -67,6 +68,7 @@ if not st.session_state.student_logged_in:
             else:
                 st.error("Please enter both your Full Name and Admission Number to proceed.")
     
+    # Strictly halt execution here so nothing else renders before login
     st.stop()
 
 # -----------------------------------------------------------------------------
@@ -182,7 +184,7 @@ def generate_tutor_response(history_list):
         try:
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 future = executor.submit(_single_api_call, key, contents)
-                result = future.result(timeout=4) # Tight 4-second timeout limit
+                result = future.result(timeout=4)
                 if result:
                     return result
         except Exception:
@@ -217,15 +219,16 @@ with st.sidebar:
 
 st.markdown(
     f"👋 **Welcome, {st.session_state.student_name}!**\n\n"
-    f"*Department of Veterinary Pathology — BVSc & AH Curriculum*"
+    f"*Department of Veterinary Pathology, CVAS, Pookode — BVSc & AH Curriculum*"
 )
 st.write("---")
 
 # Start initial lesson ONLY AFTER successful login
 if not st.session_state.chat_history and not st.session_state.completed_bystander_sessions:
     init_prompt = (
-        f"Begin Session 1 of 7 now. Welcome the student warmly by name: 'Welcome, {st.session_state.student_name}!'. "
-        f"Start with the scenario of two calves on the same farm where one becomes sick and one stays healthy. "
+        f"Begin Session 1 of 7 now. Welcome the student warmly: 'Welcome, {st.session_state.student_name}! "
+        f"Department of Veterinary Pathology, CVAS, Pookode welcomes you to Session 1.' "
+        f"Start with the scenario of two calves at CVAS Pookode where one becomes sick and one stays healthy. "
         f"Ask ONE MCQ to make the student think about why. "
         f"Do NOT introduce technical terms like 'Etiology' yet."
     )
