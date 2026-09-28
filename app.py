@@ -68,7 +68,6 @@ if not st.session_state.student_logged_in:
             else:
                 st.error("Please enter both your Full Name and Admission Number to proceed.")
     
-    # Strictly halt execution here so nothing else renders before login
     st.stop()
 
 # -----------------------------------------------------------------------------
@@ -116,16 +115,25 @@ When a session's objectives are met:
 3. STOP GENERATING CONTENT IMMEDIATELY.
 """
 
-MODELS_TO_TRY = ["gemini-3.5-flash-lite"]
+# Resilient model priority list
+MODELS_TO_TRY = [
+    "gemini-3.5-flash-lite",
+    "gemini-3.5-flash",
+    "gemini-3.1-flash",
+    "gemini-3.0-flash",
+    "gemini-2.5-flash",
+]
 
 # -----------------------------------------------------------------------------
 # 5. HELPER FUNCTIONS FOR API & BYSTANDER FALLBACK
 # -----------------------------------------------------------------------------
 
 def load_backup_curriculum():
-    """Loads the frozen fallback JSON dataset."""
+    """Loads the frozen fallback JSON dataset reliably using absolute pathing."""
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    file_path = os.path.join(base_dir, "curriculum_backup.json")
     try:
-        with open("curriculum_backup.json", "r", encoding="utf-8") as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             return json.load(f)
     except Exception:
         return None
@@ -145,10 +153,10 @@ def get_all_keys():
     return keys
 
 def _single_api_call(key, contents):
-    """Executes a single API request."""
+    """Executes an API request, smoothly trying models in order without crashing."""
+    client = genai.Client(api_key=key)
     for model_name in MODELS_TO_TRY:
         try:
-            client = genai.Client(api_key=key)
             response = client.models.generate_content(
                 model=model_name,
                 contents=contents,
@@ -160,11 +168,12 @@ def _single_api_call(key, contents):
             if response and response.text:
                 return response.text
         except Exception:
+            # If a model fails or doesn't exist, silently try the next model
             continue
     return None
 
 def generate_tutor_response(history_list):
-    """Generates response using live API with a strict 4-second timeout."""
+    """Generates response using live API with an 8-second timeout."""
     keys = get_all_keys()
     if not keys:
         return None
@@ -184,7 +193,7 @@ def generate_tutor_response(history_list):
         try:
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 future = executor.submit(_single_api_call, key, contents)
-                result = future.result(timeout=4)
+                result = future.result(timeout=8)
                 if result:
                     return result
         except Exception:
