@@ -46,7 +46,7 @@ Use this repeating cycle:
 TINY EXPLANATION (60-150 words) → VETERINARY EXAMPLE → ONE QUESTION / MCQ → STUDENT ANSWERS → SHORT FEEDBACK → MOVE FORWARD
 
 * Use 2–4 interactions per session (MCQ, Choose category, True/False, Short Answer, Matching).
-* MCQs are encouraged for beginners.
+* MCQs are encouraged for beginners. Always format MCQ choices on separate lines using clean markdown (e.g., A) ..., B) ..., C) ...). NEVER use raw HTML tags like `<br>`.
 * Never say "Wrong." Use: "Good attempt. Think about..." + 1 small clue. If needed, explain briefly and move on.
 
 ==================================================
@@ -82,7 +82,6 @@ When a session's objectives are met and verified:
 4. STOP GENERATING CONTENT IMMEDIATELY. Do NOT display preview/questions for the next session.
 """
 
-# Fixed Model Endpoint strictly set to active working model
 MODELS_TO_TRY = ["gemini-3.5-flash-lite"]
 
 # -----------------------------------------------------------------------------
@@ -107,7 +106,7 @@ def generate_tutor_response(history_list):
     """Generates a response using fresh client instances with multi-key rotation."""
     keys = get_all_keys()
     if not keys:
-        return "🔑 Please configure at least one GEMINI_API_KEY in Streamlit secrets."
+        return "🔑 Please configure at least one valid GEMINI_API_KEY in Streamlit secrets."
     
     random.shuffle(keys)
     last_err = ""
@@ -140,7 +139,7 @@ def generate_tutor_response(history_list):
                 last_err = str(e)
                 continue
 
-    return f"⚠️ API temporarily busy. Please refresh or try again in a few seconds. (Details: {last_err})"
+    return f"⚠️ API key issue or server busy. Please update your GEMINI_API_KEY in secrets. (Details: {last_err})"
 
 def render_custom_markdown(text):
     """Cleans marker strings and ensures diagrams render clearly in Streamlit."""
@@ -165,7 +164,7 @@ if not st.session_state.chat_history:
     init_prompt = (
         "Begin Session 1 of 7 now. "
         "Start with the scenario of two calves on the same farm where one becomes sick and one stays healthy. "
-        "Ask ONE question to make the student think about why. "
+        "Ask ONE question or MCQ to make the student think about why. "
         "Do NOT introduce technical terms like 'Etiology' yet."
     )
     st.session_state.chat_history.append({"role": "user", "text": init_prompt})
@@ -235,4 +234,3 @@ if user_prompt:
             st.session_state.chat_history.append({"role": "model", "text": resp_text})
 
     st.rerun()
- 
