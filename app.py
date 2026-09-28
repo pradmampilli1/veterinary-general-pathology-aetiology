@@ -153,32 +153,22 @@ When Session 7 is successfully completed, output the final message along with th
 """
 
 # -----------------------------------------------------------------------------
-# 3. ROTATING KEY MANAGEMENT & GEMINI INITIALIZATION
+# 3. ROTATING & RESILIENT KEY MANAGEMENT
 # -----------------------------------------------------------------------------
 
-def get_gemini_client():
-    """Finds all GEMINI keys in Streamlit secrets and picks one randomly."""
-    available_keys = []
-    
-    # 1. Look through Streamlit secrets for keys starting with GEMINI
-    for key in st.secrets:
-        if key.startswith("GEMINI"):
-            val = st.secrets[key]
+def get_all_keys():
+    """Extract all available Gemini API keys from st.secrets and os.environ."""
+    keys = []
+    for k in st.secrets:
+        if k.startswith("GEMINI"):
+            val = st.secrets[k]
             if isinstance(val, str) and val.strip():
-                available_keys.append(val.strip())
-                
-    # 2. Fallback to standard environment variable
-    if not available_keys:
+                keys.append(val.strip())
+    if not keys:
         env_key = os.environ.get("GEMINI_API_KEY")
         if env_key:
-            available_keys.append(env_key.strip())
-            
-    if not available_keys:
-        st.error("🔑 Please set at least one `GEMINI_API_KEY` in Streamlit secrets.")
-        st.stop()
-        
-    selected_key = random.choice(available_keys)
-    return genai.Client(api_key=selected_key)
+            keys.append(env_key.strip())
+    return keys
 
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
@@ -187,20 +177,39 @@ if "session_complete_pending" not in st.session_state:
     st.session_state.session_complete_pending = False
 
 if "chat" not in st.session_state:
-    try:
-        client = get_gemini_client()
-        st.session_state.chat = client.chats.create(
-            model="gemini-3.8-flash",
-            config=types.GenerateContentConfig(
-                system_instruction=SYSTEM_PROMPT,
-                temperature=0.3,
-                max_output_tokens=600,
-            ),
-        )
-        initial_response = st.session_state.chat.send_message("Start Session 1 of 7.")
-        st.session_state.chat_history.append({"role": "model", "text": initial_response.text})
-    except Exception as e:
-        st.error(f"Error starting chat session: {e}")
+    all_keys = get_all_keys()
+    if not all_keys:
+        st.error("🔑 Please set at least one `GEMINI_API_KEY` in Streamlit secrets.")
+        st.stop()
+    
+    # Shuffle keys to load balance across students
+    random.shuffle(all_keys)
+    chat_created = False
+    last_error = ""
+
+    # Try each available key until one works
+    for key in all_keys:
+        try:
+            client = genai.Client(api_key=key)
+            session = client.chats.create(
+                model="gemini-3.8-flash",
+                config=types.GenerateContentConfig(
+                    system_instruction=SYSTEM_PROMPT,
+                    temperature=0.3,
+                    max_output_tokens=600,
+                ),
+            )
+            initial_response = session.send_message("Start Session 1 of 7.")
+            st.session_state.chat = session
+            st.session_state.chat_history.append({"role": "model", "text": initial_response.text})
+            chat_created = True
+            break
+        except Exception as e:
+            last_error = str(e)
+            continue
+
+    if not chat_created:
+        st.error(f"Error starting chat session: {last_error}")
         st.stop()
 
 # -----------------------------------------------------------------------------
