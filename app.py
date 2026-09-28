@@ -15,11 +15,62 @@ st.set_page_config(
     layout="centered",
 )
 
-st.title("🐾 General Veterinary Pathology AI Tutor")
-st.caption("Module: Etiology and Classification of Disease (BVSc & AH)")
+# -----------------------------------------------------------------------------
+# 2. SESSION STATE & AUTHENTICATION INITIALIZATION
+# -----------------------------------------------------------------------------
+if "student_logged_in" not in st.session_state:
+    st.session_state.student_logged_in = False
+
+if "student_name" not in st.session_state:
+    st.session_state.student_name = ""
+
+if "student_id" not in st.session_state:
+    st.session_state.student_id = ""
+
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
+
+if "completed_bystander_sessions" not in st.session_state:
+    st.session_state.completed_bystander_sessions = []
+
+if "session_complete_pending" not in st.session_state:
+    st.session_state.session_complete_pending = False
+
+if "current_session_num" not in st.session_state:
+    st.session_state.current_session_num = 1
+
+if "bystander_mode" not in st.session_state:
+    st.session_state.bystander_mode = False
 
 # -----------------------------------------------------------------------------
-# 2. SYSTEM PROMPT DEFINITION
+# 3. INSTANT LOGIN SCREEN (NO HEAVY API CALLS HERE)
+# -----------------------------------------------------------------------------
+if not st.session_state.student_logged_in:
+    st.title("🐾 General Veterinary Pathology AI Tutor")
+    st.caption("Module: Etiology and Classification of Disease (BVSc & AH)")
+    st.write("---")
+    
+    st.subheader("👨‍🎓 Student Access Login")
+    st.info("Please enter your details to start the learning session.")
+    
+    with st.form("student_login_form"):
+        name_input = st.text_input("Full Name:", placeholder="e.g., Ananya R.")
+        id_input = st.text_input("Admission Number / Roll No:", placeholder="e.g., 2024-04-102")
+        submit_button = st.form_submit_button("🚀 Start Learning Session", type="primary")
+        
+        if submit_button:
+            if name_input.strip() and id_input.strip():
+                st.session_state.student_name = name_input.strip()
+                st.session_state.student_id = id_input.strip()
+                st.session_state.student_logged_in = True
+                st.rerun()
+            else:
+                st.error("Please enter both your Full Name and Admission Number to proceed.")
+    
+    st.stop()
+
+# -----------------------------------------------------------------------------
+# 4. SYSTEM PROMPT DEFINITION
 # -----------------------------------------------------------------------------
 SYSTEM_PROMPT = r"""
 # SYSTEM PROMPT: AI INTERACTIVE TUTOR FOR GENERAL VETERINARY PATHOLOGY
@@ -38,9 +89,10 @@ STUDENT PROFILE & CORE OBJECTIVE
 ==================================================
 STRICT SOCRATIC OPENING RULE (NO EARLY DEFINITIONS)
 When starting a session:
-1. Begin with a short domestic animal situation.
-2. Ask ONE simple question or MCQ to make the student think.
-3. NEVER introduce technical terms (like "Etiology" or "Predisposition") in your first message. Introduce terms ONLY AFTER the student answers!
+1. Address the student respectfully and warmly by name only (e.g., "Welcome, [Name]!").
+2. Begin with a short domestic animal situation.
+3. Ask ONE simple question or MCQ to make the student think.
+4. NEVER introduce technical terms (like "Etiology" or "Predisposition") in your first message. Introduce terms ONLY AFTER the student answers!
 
 ==================================================
 TEACHING STYLE & FORMAT
@@ -65,7 +117,7 @@ When a session's objectives are met:
 MODELS_TO_TRY = ["gemini-3.5-flash-lite"]
 
 # -----------------------------------------------------------------------------
-# 3. HELPER FUNCTIONS FOR API & BYSTANDER FALLBACK
+# 5. HELPER FUNCTIONS FOR API & BYSTANDER FALLBACK
 # -----------------------------------------------------------------------------
 
 def load_backup_curriculum():
@@ -110,7 +162,7 @@ def _single_api_call(key, contents):
     return None
 
 def generate_tutor_response(history_list):
-    """Generates response using live API with a strict 8-second timeout."""
+    """Generates response using live API with a strict 4-second timeout."""
     keys = get_all_keys()
     if not keys:
         return None
@@ -130,7 +182,7 @@ def generate_tutor_response(history_list):
         try:
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 future = executor.submit(_single_api_call, key, contents)
-                result = future.result(timeout=8)
+                result = future.result(timeout=4) # Tight 4-second timeout limit
                 if result:
                     return result
         except Exception:
@@ -144,50 +196,56 @@ def render_custom_markdown(text):
     st.markdown(clean_text)
 
 # -----------------------------------------------------------------------------
-# 4. SESSION STATE INITIALIZATION
+# 6. HEADER & SIDEBAR PROFILE DISPLAY
 # -----------------------------------------------------------------------------
+st.title("🐾 General Veterinary Pathology AI Tutor")
+st.caption("Module: Etiology and Classification of Disease (BVSc & AH)")
 
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
+with st.sidebar:
+    st.header("👨‍🎓 Student Profile")
+    st.write(f"**Name:** {st.session_state.student_name}")
+    st.write(f"**Admission No:** {st.session_state.student_id}")
+    st.write(f"**Current Session:** {st.session_state.current_session_num} / 7")
+    st.write("---")
+    if st.button("🚪 Logout / Switch Student"):
+        st.session_state.student_logged_in = False
+        st.session_state.chat_history = []
+        st.session_state.completed_bystander_sessions = []
+        st.session_state.current_session_num = 1
+        st.session_state.bystander_mode = False
+        st.rerun()
 
-if "completed_bystander_sessions" not in st.session_state:
-    st.session_state.completed_bystander_sessions = []
+st.markdown(
+    f"👋 **Welcome, {st.session_state.student_name}!**\n\n"
+    f"*Department of Veterinary Pathology — BVSc & AH Curriculum*"
+)
+st.write("---")
 
-if "session_complete_pending" not in st.session_state:
-    st.session_state.session_complete_pending = False
-
-if "current_session_num" not in st.session_state:
-    st.session_state.current_session_num = 1
-
-if "bystander_mode" not in st.session_state:
-    st.session_state.bystander_mode = False
-
-# Start lesson on first load
+# Start initial lesson ONLY AFTER successful login
 if not st.session_state.chat_history and not st.session_state.completed_bystander_sessions:
     init_prompt = (
-        "Begin Session 1 of 7 now. "
-        "Start with the scenario of two calves on the same farm where one becomes sick and one stays healthy. "
-        "Ask ONE MCQ to make the student think about why. "
-        "Do NOT introduce technical terms like 'Etiology' yet."
+        f"Begin Session 1 of 7 now. Welcome the student warmly by name: 'Welcome, {st.session_state.student_name}!'. "
+        f"Start with the scenario of two calves on the same farm where one becomes sick and one stays healthy. "
+        f"Ask ONE MCQ to make the student think about why. "
+        f"Do NOT introduce technical terms like 'Etiology' yet."
     )
     st.session_state.chat_history.append({"role": "user", "text": init_prompt})
     
-    live_resp = generate_tutor_response(st.session_state.chat_history)
-    if live_resp:
-        st.session_state.chat_history.append({"role": "model", "text": live_resp})
-    else:
-        st.session_state.bystander_mode = True
+    with st.spinner("Connecting to Pathology Tutor..."):
+        live_resp = generate_tutor_response(st.session_state.chat_history)
+        if live_resp:
+            st.session_state.chat_history.append({"role": "model", "text": live_resp})
+        else:
+            st.session_state.bystander_mode = True
 
 # -----------------------------------------------------------------------------
-# 5. BYSTANDER MODE RENDERER (OFFLINE FALLBACK ENGINE)
+# 7. BYSTANDER MODE RENDERER (OFFLINE JSON FALLBACK ENGINE)
 # -----------------------------------------------------------------------------
-
 if st.session_state.bystander_mode:
     st.info("⚡ **Bystander Backup Engine Active** (Running in high-reliability offline mode)")
     
     backup_data = load_backup_curriculum()
     
-    # Display previously completed sessions
     for comp in st.session_state.completed_bystander_sessions:
         with st.expander(f"✅ Completed: {comp['title']}", expanded=False):
             st.write(comp['scenario'])
@@ -200,23 +258,19 @@ if st.session_state.bystander_mode:
             )
             st.caption(f"Recap: {comp['recap']}")
 
-    # Check if all 7 sessions are finished
     if st.session_state.current_session_num > 7:
         st.balloons()
-        st.success("🎉 **MODULE COMPLETED SUCCESSFULLY!**")
-        st.markdown("""
-        ### 📋 Complete Etiology Classification Summary Matrix
+        st.success(f"🎉 **CONGRATULATIONS {st.session_state.student_name.upper()}! MODULE COMPLETED SUCCESSFULLY!**")
+        st.markdown(f"**Admission No:** `{st.session_state.student_id}`")
         
-        | Etiological Category | Primary Definition | Primary Veterinary Example |
-        | :--- | :--- | :--- |
-        | **Etiology** | Study of the cause/origin of disease | Investigating bovine respiratory outbreaks |
-        | **Predisposing Factors** | Intrinsic/extrinsic factors increasing susceptibility | White face color in Herefords (Cancer Eye) |
-        | **Physical Causes** | Mechanical, thermal, or radiation forces | Traumatic fractures from vehicle accidents |
-        | **Chemical Causes** | Toxic chemicals altering cellular function | Organophosphate pesticide poisoning in dogs |
-        | **Biological Causes** | Living infectious micro/macro-organisms | *Haemonchus contortus* parasite in sheep |
-        | **Nutritional Causes** | Excess or deficiency of essential nutrients | Milk fever (Acute Calcium deficiency) |
-        | **Immunological Causes** | Overactive or abnormal immune responses | Anaphylactic allergic reactions to insect stings |
-        """)
+        if backup_data and "completion_matrix" in backup_data:
+            matrix = backup_data["completion_matrix"]
+            st.markdown(f"### {matrix['header']}")
+            
+            table_md = "| Etiological Category | Primary Definition | Primary Veterinary Example |\n| :--- | :--- | :--- |\n"
+            for row in matrix["rows"]:
+                table_md += f"| **{row['category']}** | {row['definition']} | {row['example']} |\n"
+            st.markdown(table_md)
         
         if st.button("🔄 Restart Module", type="primary"):
             st.session_state.current_session_num = 1
@@ -229,6 +283,9 @@ if st.session_state.bystander_mode:
         sess_key = f"session_{st.session_state.current_session_num}"
         if backup_data and sess_key in backup_data:
             curr_session = backup_data[sess_key]
+            
+            salutation_text = curr_session["salutation"].format(student_name=st.session_state.student_name)
+            st.markdown(f"**{salutation_text}**")
             
             st.subheader(curr_session["title"])
             st.write(curr_session["scenario"])
@@ -256,7 +313,6 @@ if st.session_state.bystander_mode:
                     st.write("---")
                     st.write(f"**Recap:** {curr_session['recap']}")
                     
-                    # Store completed session state if not already added
                     if not any(c['title'] == curr_session['title'] for c in st.session_state.completed_bystander_sessions):
                         st.session_state.completed_bystander_sessions.append({
                             "title": curr_session["title"],
@@ -268,7 +324,7 @@ if st.session_state.bystander_mode:
                     
                     st.session_state.session_complete_pending = True
                 else:
-                    st.warning("Good attempt! Re-read the scenario carefully and select the best matching option.")
+                    st.warning(curr_session.get("feedback_incorrect", "Good attempt! Re-read the scenario carefully and select the best matching option."))
             
             if st.session_state.session_complete_pending:
                 st.write("---")
@@ -283,9 +339,8 @@ if st.session_state.bystander_mode:
             st.error("Backup curriculum file missing or unreadable.")
 
 # -----------------------------------------------------------------------------
-# 6. LIVE AI MODE RENDERER
+# 8. LIVE AI MODE RENDERER
 # -----------------------------------------------------------------------------
-
 else:
     for idx, msg in enumerate(st.session_state.chat_history):
         if idx == 0 and "Begin Session 1 of 7 now" in msg["text"]:
@@ -316,7 +371,7 @@ else:
                 st.rerun()
             else:
                 user_input = (
-                    f"I am ready. Begin Session {next_num} of 7 now. "
+                    f"I am ready. Begin Session {next_num} of 7 now. Address {st.session_state.student_name} warmly by name. "
                     f"Start with a simple story/scenario and ask ONE question. Do NOT define terms in the opening message."
                 )
                 st.session_state.chat_history.append({"role": "user", "text": user_input})
