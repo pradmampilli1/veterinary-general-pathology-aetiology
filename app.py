@@ -1,5 +1,6 @@
 import os
 import random
+import time
 import streamlit as st
 from google import genai
 from google.genai import types
@@ -152,8 +153,11 @@ When Session 7 is successfully completed, output the final message along with th
 7. Did I append `[SESSION_COMPLETE]` if finished and STOP?
 """
 
+# Priority fallback list of models
+MODELS_TO_TRY = ["gemini-3.8-flash", "gemini-2.5-flash", "gemini-1.5-flash"]
+
 # -----------------------------------------------------------------------------
-# 3. ROTATING & RESILIENT KEY MANAGEMENT
+# 3. ROTATING KEY & MODEL FALLBACK MANAGEMENT
 # -----------------------------------------------------------------------------
 
 def get_all_keys():
@@ -182,34 +186,36 @@ if "chat" not in st.session_state:
         st.error("🔑 Please set at least one `GEMINI_API_KEY` in Streamlit secrets.")
         st.stop()
     
-    # Shuffle keys to load balance across students
     random.shuffle(all_keys)
     chat_created = False
     last_error = ""
 
-    # Try each available key until one works
+    # Try every combination of Key and Model until one succeeds
     for key in all_keys:
-        try:
-            client = genai.Client(api_key=key)
-            session = client.chats.create(
-                model="gemini-3.8-flash",
-                config=types.GenerateContentConfig(
-                    system_instruction=SYSTEM_PROMPT,
-                    temperature=0.3,
-                    max_output_tokens=600,
-                ),
-            )
-            initial_response = session.send_message("Start Session 1 of 7.")
-            st.session_state.chat = session
-            st.session_state.chat_history.append({"role": "model", "text": initial_response.text})
-            chat_created = True
+        for model_name in MODELS_TO_TRY:
+            try:
+                client = genai.Client(api_key=key)
+                session = client.chats.create(
+                    model=model_name,
+                    config=types.GenerateContentConfig(
+                        system_instruction=SYSTEM_PROMPT,
+                        temperature=0.3,
+                        max_output_tokens=600,
+                    ),
+                )
+                initial_response = session.send_message("Start Session 1 of 7.")
+                st.session_state.chat = session
+                st.session_state.chat_history.append({"role": "model", "text": initial_response.text})
+                chat_created = True
+                break
+            except Exception as e:
+                last_error = str(e)
+                continue
+        if chat_created:
             break
-        except Exception as e:
-            last_error = str(e)
-            continue
 
     if not chat_created:
-        st.error(f"Error starting chat session: {last_error}")
+        st.error(f"Servers are temporarily busy. Please refresh the page in a moment. (Details: {last_error})")
         st.stop()
 
 # -----------------------------------------------------------------------------
@@ -221,7 +227,6 @@ for msg in st.session_state.chat_history:
     with st.chat_message(role):
         st.markdown(clean_text)
 
-# Check if the last assistant message ended with [SESSION_COMPLETE]
 if st.session_state.chat_history:
     last_msg = st.session_state.chat_history[-1]
     if last_msg["role"] == "model" and "[SESSION_COMPLETE]" in last_msg["text"]:
