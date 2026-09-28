@@ -34,6 +34,13 @@ STUDENT PROFILE & CORE OBJECTIVE
 * Central Student Question: "WHY did this animal become sick?"
 
 ==================================================
+STRICT SOCRATIC OPENING RULE (NO EARLY DEFINITIONS)
+When starting a session:
+1. Begin with a short domestic animal situation (e.g., Session 1: "Two calves are on the same farm. One becomes sick while the other remains healthy...").
+2. Ask ONE simple question or MCQ to make the student think.
+3. NEVER introduce technical terms (like "Etiology" or "Predisposing") or definitions in your very first message of a session. Introduce terms ONLY AFTER the student answers!
+
+==================================================
 TEACHING STYLE & INTERACTION CYCLE
 Use this repeating cycle:
 TINY EXPLANATION (60-150 words) → VETERINARY EXAMPLE → ONE QUESTION / MCQ → STUDENT ANSWERS → SHORT FEEDBACK → MOVE FORWARD
@@ -44,7 +51,7 @@ TINY EXPLANATION (60-150 words) → VETERINARY EXAMPLE → ONE QUESTION / MCQ �
 
 ==================================================
 TECHNICAL TERMINOLOGY FORMAT (MANDATORY)
-When introducing a technical term for the first time, use:
+When introducing a technical term AFTER student discovery, use:
 
 📌 **TERM:** [Technical Term]  
 • **Simple meaning:** [Simple explanation in plain language]  
@@ -52,12 +59,12 @@ When introducing a technical term for the first time, use:
 
 ==================================================
 EXACTLY 7 SEQUENTIAL SESSIONS
-Follow the current session number supplied by the user state:
-1. Session 1: What is Etiology?
-2. Session 2: Predisposition Causes
-3. Session 3: Definitive Causes - Physical
+Follow the current session roadmap strictly:
+1. Session 1: What is Etiology? (Starts with 2 calves story -> Question -> Introduce Etiology -> Predisposing vs Definitive)
+2. Session 2: Predisposing Causes (Heredity, Species, Breed, Age, Sex, Pigmentation)
+3. Session 3: Definitive Causes - Physical (Trauma, Heat, Cold, Radiation)
 4. Session 4: Definitive Causes - Chemical Causes and Toxins
-5. Session 5: Definitive Causes - Biological / Viable
+5. Session 5: Definitive Causes - Biological / Viable (Bacteria, Viruses, Fungi, Parasites, etc.)
 6. Session 6: Other Definitive Causes (Nutritional, Immunological, Miscellaneous)
 7. Session 7: Complete Classification and Application
 
@@ -105,7 +112,6 @@ def generate_tutor_response(history_list):
     random.shuffle(keys)
     last_err = ""
 
-    # Convert chat history into Google GenAI Content format (System Instruction is isolated in Config)
     contents = []
     for msg in history_list:
         role = "user" if msg["role"] == "user" else "model"
@@ -154,9 +160,14 @@ if "session_complete_pending" not in st.session_state:
 if "current_session_num" not in st.session_state:
     st.session_state.current_session_num = 1
 
-# Start lesson automatically on first load
+# Start lesson automatically on first load with explicit initial instruction
 if not st.session_state.chat_history:
-    init_prompt = f"Start Session {st.session_state.current_session_num} of 7."
+    init_prompt = (
+        "Begin Session 1 of 7 now. "
+        "Start with the scenario of two calves on the same farm where one becomes sick and one stays healthy. "
+        "Ask ONE question to make the student think about why. "
+        "Do NOT introduce technical terms like 'Etiology' yet."
+    )
     st.session_state.chat_history.append({"role": "user", "text": init_prompt})
     initial_resp = generate_tutor_response(st.session_state.chat_history)
     st.session_state.chat_history.append({"role": "model", "text": initial_resp})
@@ -166,8 +177,8 @@ if not st.session_state.chat_history:
 # -----------------------------------------------------------------------------
 
 for idx, msg in enumerate(st.session_state.chat_history):
-    # Hide internal system trigger prompts from rendering in UI
-    if idx == 0 and msg["text"].startswith("Start Session"):
+    # Hide internal system triggers from UI
+    if idx == 0 and "Begin Session 1 of 7 now" in msg["text"]:
         continue
     if msg["role"] == "user" and msg["text"].startswith("I am ready. Continue to Session"):
         continue
@@ -194,7 +205,10 @@ if st.session_state.session_complete_pending:
         st.session_state.session_complete_pending = False
         st.session_state.current_session_num = next_num
         
-        user_input = f"I am ready. Continue to Session {next_num} of 7."
+        user_input = (
+            f"I am ready. Begin Session {next_num} of 7 now. "
+            f"Start with a simple story/scenario and ask ONE question. Do NOT define terms in the opening message."
+        )
         st.session_state.chat_history.append({"role": "user", "text": user_input})
 
         with st.chat_message("assistant"):
