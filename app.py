@@ -168,15 +168,15 @@ if "chat_history" not in st.session_state:
 if "session_complete_pending" not in st.session_state:
     st.session_state.session_complete_pending = False
 
-# Initializing Gemini Chat Session using gemini-2.5-flash for max speed & accuracy
+# Using gemini-1.5-flash for max speed, reliability, and supported API availability
 if "chat" not in st.session_state:
     try:
         st.session_state.chat = client.chats.create(
-            model="gemini-2.5-flash",
+            model="gemini-1.5-flash",
             config=types.GenerateContentConfig(
                 system_instruction=SYSTEM_PROMPT,
-                temperature=0.2,
-                max_output_tokens=600,  # Fast responses
+                temperature=0.3,
+                max_output_tokens=600,
             ),
         )
         initial_response = st.session_state.chat.send_message("Start Session 1 of 7.")
