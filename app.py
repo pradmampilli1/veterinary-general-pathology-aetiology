@@ -1,6 +1,7 @@
 import os
 import random
 import json
+import concurrent.futures
 import streamlit as st
 from google import genai
 from google.genai import types
@@ -89,8 +90,27 @@ def get_all_keys():
             keys.append(env_key.strip())
     return keys
 
+def _single_api_call(key, contents):
+    """Executes a single API request."""
+    for model_name in MODELS_TO_TRY:
+        try:
+            client = genai.Client(api_key=key)
+            response = client.models.generate_content(
+                model=model_name,
+                contents=contents,
+                config=types.GenerateContentConfig(
+                    system_instruction=SYSTEM_PROMPT,
+                    max_output_tokens=650,
+                ),
+            )
+            if response and response.text:
+                return response.text
+        except Exception:
+            continue
+    return None
+
 def generate_tutor_response(history_list):
-    """Generates response using live API; returns None if API is unavailable."""
+    """Generates response using live API with a strict 8-second timeout."""
     keys = get_all_keys()
     if not keys:
         return None
@@ -106,22 +126,17 @@ def generate_tutor_response(history_list):
             )
         )
 
+    # Try keys with a strict 8-second execution cap
     for key in keys:
-        for model_name in MODELS_TO_TRY:
-            try:
-                client = genai.Client(api_key=key)
-                response = client.models.generate_content(
-                    model=model_name,
-                    contents=contents,
-                    config=types.GenerateContentConfig(
-                        system_instruction=SYSTEM_PROMPT,
-                        max_output_tokens=650,
-                    ),
-                )
-                if response and response.text:
-                    return response.text
-            except Exception:
-                continue
+        try:
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(_single_api_call, key, contents)
+                result = future.result(timeout=8) # 8-second timeout cap
+                if result:
+                    return result
+        except Exception:
+            continue
+
     return None
 
 def render_custom_markdown(text):
