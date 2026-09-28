@@ -3,8 +3,6 @@ import random
 import json
 import concurrent.futures
 import streamlit as st
-from google import genai
-from google.genai import types
 
 # -----------------------------------------------------------------------------
 # 1. STREAMLIT PAGE CONFIGURATION
@@ -41,6 +39,9 @@ if "current_session_num" not in st.session_state:
 
 if "bystander_mode" not in st.session_state:
     st.session_state.bystander_mode = False
+
+if "bystander_reason" not in st.session_state:
+    st.session_state.bystander_reason = ""
 
 # -----------------------------------------------------------------------------
 # 3. ISOLATED STUDENT LOGIN SCREEN
@@ -115,7 +116,6 @@ When a session's objectives are met:
 3. STOP GENERATING CONTENT IMMEDIATELY.
 """
 
-# Supported standard models
 MODELS_TO_TRY = [
     "gemini-2.5-flash",
     "gemini-2.0-flash",
@@ -137,53 +137,78 @@ def load_backup_curriculum():
         return None
 
 def get_all_keys():
-    """Retrieves all API keys from Streamlit secrets or OS environment."""
+    """Retrieves all API keys from Streamlit secrets or OS environment (case-insensitive)."""
     keys = []
-    # Search Streamlit Secrets
+    
+    # 1. Search Streamlit Secrets
     try:
         for k in st.secrets:
-            if k.startswith("GEMINI") or k == "GEMINI_API_KEY":
-                val = st.secrets[k]
-                if isinstance(val, str) and val.strip():
+            val = st.secrets[k]
+            if isinstance(val, str) and val.strip():
+                if k.upper().startswith("GEMINI") or k.upper() in ["API_KEY", "GOOGLE_API_KEY"]:
                     keys.append(val.strip())
     except Exception:
         pass
-        
-    # Search OS Environment Variables
+
+    # 2. Search OS Environment Variables
     if not keys:
-        env_key = os.environ.get("GEMINI_API_KEY")
-        if env_key and env_key.strip():
-            keys.append(env_key.strip())
-            
-    return keys
+        for env_var in ["GEMINI_API_KEY", "GOOGLE_API_KEY", "GEMINI_KEY"]:
+            env_val = os.environ.get(env_var)
+            if env_val and env_val.strip():
+                keys.append(env_val.strip())
+
+    return list(set(keys))
 
 def _single_api_call(key, contents):
-    """Executes an API request across models."""
+    """Executes an API request across models with multi-SDK compatibility."""
+    # Attempt Primary SDK (google.genai)
     try:
+        from google import genai
+        from google.genai import types
         client = genai.Client(api_key=key)
+        for model_name in MODELS_TO_TRY:
+            try:
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=contents,
+                    config=types.GenerateContentConfig(
+                        system_instruction=SYSTEM_PROMPT,
+                        max_output_tokens=650,
+                    ),
+                )
+                if response and response.text:
+                    return response.text
+            except Exception:
+                continue
     except Exception:
-        return None
+        pass
 
-    for model_name in MODELS_TO_TRY:
-        try:
-            response = client.models.generate_content(
-                model=model_name,
-                contents=contents,
-                config=types.GenerateContentConfig(
-                    system_instruction=SYSTEM_PROMPT,
-                    max_output_tokens=650,
-                ),
-            )
-            if response and response.text:
-                return response.text
-        except Exception:
-            continue
+    # Attempt Fallback SDK (google.generativeai)
+    try:
+        import google.generativeai as legacy_genai
+        legacy_genai.configure(api_key=key)
+        for model_name in MODELS_TO_TRY:
+            try:
+                model = legacy_genai.GenerativeModel(
+                    model_name=model_name,
+                    system_instruction=SYSTEM_PROMPT
+                )
+                formatted_prompt = contents[-1]["parts"][0] if isinstance(contents[-1], dict) else str(contents[-1])
+                response = model.generate_content(formatted_prompt)
+                if response and response.text:
+                    return response.text
+            except Exception:
+                continue
+    except Exception:
+        pass
+
     return None
 
 def generate_tutor_response(history_list):
     """Generates response using live API with a 10-second timeout."""
     keys = get_all_keys()
     if not keys:
+        st.session_state.bystander_reason = "No API Key found in Streamlit Secrets"
         return None
 
     random.shuffle(keys)
@@ -191,10 +216,10 @@ def generate_tutor_response(history_list):
     for msg in history_list:
         role = "user" if msg["role"] == "user" else "model"
         contents.append(
-            types.Content(
-                role=role,
-                parts=[types.Part.from_text(text=msg["text"])]
-            )
+            {
+                "role": role,
+                "parts": [msg["text"]]
+            }
         )
 
     for key in keys:
@@ -204,9 +229,11 @@ def generate_tutor_response(history_list):
                 result = future.result(timeout=10)
                 if result:
                     return result
-        except Exception:
+        except Exception as e:
+            st.session_state.bystander_reason = f"API Request timed out or failed: {str(e)}"
             continue
 
+    st.session_state.bystander_reason = "All model attempts failed or rate limited"
     return None
 
 def render_custom_markdown(text):
@@ -227,7 +254,6 @@ with st.sidebar:
     st.write(f"**Current Session:** {st.session_state.current_session_num} / 7")
     st.write("---")
     
-    # API Key Diagnostic Check
     keys_found = len(get_all_keys())
     st.caption(f"🔑 API Keys Detected: {keys_found}")
     
@@ -237,6 +263,7 @@ with st.sidebar:
         st.session_state.completed_bystander_sessions = []
         st.session_state.current_session_num = 1
         st.session_state.bystander_mode = False
+        st.session_state.bystander_reason = ""
         st.rerun()
 
 st.markdown(
@@ -268,6 +295,8 @@ if not st.session_state.chat_history and not st.session_state.completed_bystande
 # -----------------------------------------------------------------------------
 if st.session_state.bystander_mode:
     st.info("⚡ **Bystander Backup Engine Active** (Running in high-reliability offline mode)")
+    if st.session_state.bystander_reason:
+        st.caption(f"ℹ️ *Diagnostic Note: {st.session_state.bystander_reason}*")
     
     backup_data = load_backup_curriculum()
     
@@ -302,6 +331,7 @@ if st.session_state.bystander_mode:
             st.session_state.completed_bystander_sessions = []
             st.session_state.session_complete_pending = False
             st.session_state.bystander_mode = False
+            st.session_state.bystander_reason = ""
             st.rerun()
 
     else:
