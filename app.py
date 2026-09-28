@@ -152,13 +152,15 @@ When Session 7 is successfully completed, output the final message along with th
 7. Did I append `[SESSION_COMPLETE]` if finished and STOP?
 """
 
+# Models to attempt in priority order
 MODELS_TO_TRY = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash-latest"]
 
 # -----------------------------------------------------------------------------
-# 3. HELPER FUNCTIONS & CHAT INITIALIZATION
+# 3. HELPER FUNCTIONS FOR STATE-PERSISTENT API CALLS
 # -----------------------------------------------------------------------------
 
 def get_all_keys():
+    """Retrieves all API keys from Streamlit secrets or OS environment."""
     keys = []
     for k in st.secrets:
         if k.startswith("GEMINI"):
@@ -171,46 +173,50 @@ def get_all_keys():
             keys.append(env_key.strip())
     return keys
 
-def create_chat_session():
-    """Attempts to create a new chat session across available keys and models."""
-    all_keys = get_all_keys()
-    if not all_keys:
-        return None, "No API keys configured."
+def generate_tutor_response(history_list):
+    """Generates a response using fresh client instances with multi-key/model rotation."""
+    keys = get_all_keys()
+    if not keys:
+        return "🔑 Please configure at least one GEMINI_API_KEY in Streamlit secrets."
     
-    random.shuffle(all_keys)
+    random.shuffle(keys)
     last_err = ""
-    for key in all_keys:
-        for model in MODELS_TO_TRY:
+
+    # Convert session history into Google GenAI Content format
+    contents = []
+    for msg in history_list:
+        role = "user" if msg["role"] == "user" else "model"
+        contents.append(
+            types.Content(
+                role=role,
+                parts=[types.Part.from_text(text=msg["text"])]
+            )
+        )
+
+    for key in keys:
+        for model_name in MODELS_TO_TRY:
             try:
                 client = genai.Client(api_key=key)
-                session = client.chats.create(
-                    model=model,
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=contents,
                     config=types.GenerateContentConfig(
                         system_instruction=SYSTEM_PROMPT,
                         temperature=0.3,
                         max_output_tokens=600,
                     ),
                 )
-                return session, None
+                if response and response.text:
+                    return response.text
             except Exception as e:
                 last_err = str(e)
                 continue
-    return None, last_err
 
-def send_user_message(user_text):
-    """Sends a message with automatic session restoration if an API glitch occurs."""
-    try:
-        response = st.session_state.chat.send_message(user_text)
-        return response.text
-    except Exception:
-        # Re-initialize chat session on failure and retry
-        new_session, err = create_chat_session()
-        if new_session:
-            st.session_state.chat = new_session
-            response = st.session_state.chat.send_message(user_text)
-            return response.text
-        else:
-            return f"⚠️ High traffic on API servers. Please try sending your message again in a few seconds."
+    return f"⚠️ API temporarily busy. Please refresh or try again in a few seconds. (Details: {last_err})"
+
+# -----------------------------------------------------------------------------
+# 4. SESSION STATE INITIALIZATION
+# -----------------------------------------------------------------------------
 
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
@@ -218,24 +224,20 @@ if "chat_history" not in st.session_state:
 if "session_complete_pending" not in st.session_state:
     st.session_state.session_complete_pending = False
 
-if "chat" not in st.session_state:
-    session, err = create_chat_session()
-    if not session:
-        st.error(f"Error starting chat session: {err}")
-        st.stop()
-    st.session_state.chat = session
-    
-    try:
-        init_res = st.session_state.chat.send_message("Start Session 1 of 7.")
-        st.session_state.chat_history.append({"role": "model", "text": init_res.text})
-    except Exception as e:
-        st.error(f"Failed to start first lesson: {e}")
-        st.stop()
+# Start lesson automatically on first load
+if not st.session_state.chat_history:
+    st.session_state.chat_history.append({"role": "user", "text": "Start Session 1 of 7."})
+    initial_resp = generate_tutor_response(st.session_state.chat_history)
+    st.session_state.chat_history.append({"role": "model", "text": initial_resp})
 
 # -----------------------------------------------------------------------------
-# 4. RENDER CONVERSATION HISTORY
+# 5. RENDER CHAT HISTORY
 # -----------------------------------------------------------------------------
-for msg in st.session_state.chat_history:
+
+# Render history (skip internal setup trigger)
+for idx, msg in enumerate(st.session_state.chat_history):
+    if idx == 0 and msg["text"] == "Start Session 1 of 7.":
+        continue
     role = "assistant" if msg["role"] == "model" else "user"
     clean_text = msg["text"].replace("[SESSION_COMPLETE]", "").strip()
     with st.chat_message(role):
@@ -247,7 +249,7 @@ if st.session_state.chat_history:
         st.session_state.session_complete_pending = True
 
 # -----------------------------------------------------------------------------
-# 5. USER INTERACTION & TAP-TO-CONTINUE UI
+# 6. USER INTERACTION & TAP-TO-CONTINUE UI
 # -----------------------------------------------------------------------------
 
 if st.session_state.session_complete_pending:
@@ -262,8 +264,9 @@ if st.session_state.session_complete_pending:
 
         with st.chat_message("assistant"):
             with st.spinner("Preparing next session..."):
-                resp_text = send_user_message(user_input)
-                st.markdown(resp_text.replace("[SESSION_COMPLETE]", "").strip())
+                resp_text = generate_tutor_response(st.session_state.chat_history)
+                clean_resp = resp_text.replace("[SESSION_COMPLETE]", "").strip()
+                st.markdown(clean_resp)
                 st.session_state.chat_history.append({"role": "model", "text": resp_text})
         st.rerun()
 
@@ -279,7 +282,7 @@ if user_prompt:
 
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
-            resp_text = send_user_message(user_prompt)
+            resp_text = generate_tutor_response(st.session_state.chat_history)
             clean_resp = resp_text.replace("[SESSION_COMPLETE]", "").strip()
             st.markdown(clean_resp)
             st.session_state.chat_history.append({"role": "model", "text": resp_text})
