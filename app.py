@@ -1,6 +1,8 @@
 import os
 import random
 import json
+import urllib.request
+import urllib.error
 import concurrent.futures
 import streamlit as st
 
@@ -116,11 +118,10 @@ When a session's objectives are met:
 3. STOP GENERATING CONTENT IMMEDIATELY.
 """
 
-# Verified Active Gemini Model Priority Chain
 MODELS_TO_TRY = [
-    "gemini-3.5-flash-lite",
-    "gemini-3.5-flash",
-    "gemini-2.5-flash"
+    "gemini-2.5-flash",
+    "gemini-1.5-flash",
+    "gemini-2.0-flash"
 ]
 
 # -----------------------------------------------------------------------------
@@ -157,57 +158,55 @@ def get_all_keys():
 
     return list(set(keys))
 
-def _single_api_call(key, contents):
-    """Executes API request using the official Google GenAI SDK with active models."""
-    last_err = None
-    
-    # Primary GenAI SDK
-    try:
-        from google import genai
-        from google.genai import types
-        client = genai.Client(api_key=key)
-        for model_name in MODELS_TO_TRY:
-            try:
-                response = client.models.generate_content(
-                    model=model_name,
-                    contents=contents,
-                    config=types.GenerateContentConfig(
-                        system_instruction=SYSTEM_PROMPT,
-                        max_output_tokens=650,
-                    ),
-                )
-                if response and response.text:
-                    return response.text, None
-            except Exception as err:
-                last_err = str(err)
-                continue
-    except Exception as err:
-        last_err = str(err)
+def _call_gemini_rest_api(key, contents):
+    """Direct REST API call using native urllib — requires no external pip packages."""
+    formatted_contents = []
+    for msg in contents:
+        formatted_contents.append({
+            "role": msg["role"],
+            "parts": [{"text": msg["parts"][0]}]
+        })
 
-    # Legacy Fallback GenAI SDK
-    try:
-        import google.generativeai as legacy_genai
-        legacy_genai.configure(api_key=key)
-        for model_name in MODELS_TO_TRY:
-            try:
-                model = legacy_genai.GenerativeModel(
-                    model_name=model_name,
-                    system_instruction=SYSTEM_PROMPT
-                )
-                formatted_prompt = contents[-1]["parts"][0] if isinstance(contents[-1], dict) else str(contents[-1])
-                response = model.generate_content(formatted_prompt)
-                if response and response.text:
-                    return response.text, None
-            except Exception as err:
-                last_err = str(err)
-                continue
-    except Exception as err:
-        last_err = str(err)
+    payload = {
+        "contents": formatted_contents,
+        "systemInstruction": {
+            "parts": [{"text": SYSTEM_PROMPT}]
+        },
+        "generationConfig": {
+            "maxOutputTokens": 650
+        }
+    }
 
-    return None, last_err
+    payload_bytes = json.dumps(payload).encode("utf-8")
+
+    for model_name in MODELS_TO_TRY:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
+        req = urllib.request.Request(
+            url,
+            data=payload_bytes,
+            headers={"Content-Type": "application/json"},
+            method="POST"
+        )
+
+        try:
+            with urllib.request.urlopen(req, timeout=7) as response:
+                if response.status == 200:
+                    res_body = json.loads(response.read().decode("utf-8"))
+                    candidates = res_body.get("candidates", [])
+                    if candidates:
+                        parts = candidates[0].get("content", {}).get("parts", [])
+                        if parts and "text" in parts[0]:
+                            return parts[0]["text"], None
+        except urllib.error.HTTPError as e:
+            err_msg = e.read().decode("utf-8")
+            continue
+        except Exception as e:
+            continue
+
+    return None, "REST API call failed across all specified Gemini model endpoints."
 
 def generate_tutor_response(history_list):
-    """Generates response using live API with an 8-second timeout."""
+    """Generates response using live REST API with an 8-second timeout."""
     keys = get_all_keys()
     if not keys:
         st.session_state.bystander_reason = "No API Key found in Streamlit Secrets"
@@ -217,24 +216,22 @@ def generate_tutor_response(history_list):
     contents = []
     for msg in history_list:
         role = "user" if msg["role"] == "user" else "model"
-        contents.append(
-            {
-                "role": role,
-                "parts": [msg["text"]]
-            }
-        )
+        contents.append({
+            "role": role,
+            "parts": [msg["text"]]
+        })
 
     for key in keys:
         try:
             with concurrent.futures.ThreadPoolExecutor() as executor:
-                future = executor.submit(_single_api_call, key, contents)
+                future = executor.submit(_call_gemini_rest_api, key, contents)
                 result, err_msg = future.result(timeout=8)
                 if result:
                     return result
                 elif err_msg:
-                    st.session_state.bystander_reason = f"API Error: {err_msg}"
+                    st.session_state.bystander_reason = err_msg
         except Exception as e:
-            st.session_state.bystander_reason = f"API Timeout or Connection Exception: {str(e)}"
+            st.session_state.bystander_reason = f"Timeout or Connection Exception: {str(e)}"
             continue
 
     if not st.session_state.bystander_reason:
