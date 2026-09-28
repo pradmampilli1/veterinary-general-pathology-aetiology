@@ -1,3 +1,9 @@
+{
+  "module_info": {
+    "title": "General Veterinary Pathology AI Tutor",
+    "subtitle": "Module: Etiology and Classification of Disease (BVSc & AH)",
+    "total_sessions": 7
+  },
   "session_1": {
     "title": "Session 1 of 7 — What is Etiology?",
     "salutation": "Welcome, {student_name}! Department of Veterinary Pathology, CVAS, Pookode welcomes you to Session 1.",
@@ -18,3 +24,164 @@
     },
     "recap": "Etiology asks the central question: WHY did this animal become sick?"
   },
+  "session_2": {
+    "title": "Session 2 of 7 — Predisposing Causes",
+    "salutation": "Great progress, {student_name}! Welcome to Session 2.",
+    "scenario": "A herd of mixed-breed cattle is exposed to intense sunlight. White-faced Hereford cattle develop skin lesions on their unpigmented eyelids (Cancer Eye), while fully pigmented Angus cattle in the same field show no lesions.",
+    "question": "What type of factor made the Hereford cattle more susceptible to skin damage?",
+    "options": [
+      "A) Definitive cause",
+      "B) Predisposing cause (Lack of skin pigmentation)",
+      "C) Iatrogenic cause"
+    ],
+    "correct_option": "B",
+    "feedback_correct": "Spot on! Lack of skin pigmentation is an intrinsic predisposing factor that increases vulnerability to UV radiation.",
+    "feedback_incorrect": "Good attempt! Re-read the scenario—the sunlight was present for all, but skin color made one group more vulnerable.",
+    "term_card": {
+      "term": "Predisposition Factor",
+      "meaning": "A factor intrinsic or extrinsic to the animal that increases its susceptibility to disease without directly causing it.",
+      "example": "Age, species, breed, sex, or lack of protective skin pigmentation."
+    },
+    "recap": "Predisposing causes do not directly initiate disease; they make the host more vulnerable."
+  },
+  "session_3": {
+    "title": "Session 3 of 7 — Physical Causes",
+    "salutation": "Welcome to Session 3, {student_name}!",
+    "scenario": "A dog is brought to the veterinary emergency clinic with severe soft tissue trauma and multiple bone fractures following a motor vehicle accident.",
+    "question": "Which etiological category directly initiated this structural tissue damage?",
+    "options": [
+      "A) Physical Cause (Mechanical Kinetic Energy / Trauma)",
+      "B) Chemical Cause",
+      "C) Biological Cause"
+    ],
+    "correct_option": "A",
+    "feedback_correct": "Correct! Mechanical kinetic energy (trauma) directly caused the structural and tissue damage.",
+    "feedback_incorrect": "Good attempt! Consider whether external kinetic force, chemicals, or living organisms caused the physical injury.",
+    "term_card": {
+      "term": "Physical Cause",
+      "meaning": "Environmental energy or forces acting on tissues (Mechanical Trauma, Extreme Heat, Cold, or Radiation).",
+      "example": "Frostbite from extreme cold, burns from thermal heat, or fractures from trauma."
+    },
+    "recap": "Physical causes involve external physical forces or energy damaging body structures."
+  },
+  "session_4": {
+    "title": "Session 4 of 7 — Chemical Causes and Toxins",
+    "salutation": "Moving along nicely, {student_name}! Welcome to Session 4.",
+    "scenario": "A farm dog accidentally ingests an open container of organophosphate pesticide stored in a barn and shows severe muscular twitching, profuse salivation, and collapse within 30 minutes.",
+    "question": "How should this primary cause of illness be classified?",
+    "options": [
+      "A) Biological cause",
+      "B) Toxic / Chemical cause",
+      "C) Nutritional deficiency"
+    ],
+    "correct_option": "B",
+    "feedback_correct": "Correct! Pesticides are toxic chemical agents that disrupt cellular and neuromuscular function.",
+    "feedback_incorrect": "Good attempt! Think about whether the pesticide acts through living infection or chemical toxicity.",
+    "term_card": {
+      "term": "Toxin / Chemical Cause",
+      "meaning": "Exogenous or endogenous chemical substances that alter cell function or cause molecular cell injury.",
+      "example": "Organophosphate toxicity, heavy metal poisoning, or phytotoxin ingestion."
+    },
+    "recap": "Chemicals and toxins produce disease through chemical cell injury rather than physical force."
+  },
+  "session_5": {
+    "title": "Session 5 of 7 — Biological / Viable Causes",
+    "salutation": "Welcome to Session 5, {student_name}!",
+    "scenario": "A flock of grazing sheep exhibits severe pale mucous membranes (anemia) and submandibular edema ('bottle jaw') due to a heavy Haemonchus contortus parasite infestation in the abomasum.",
+    "question": "What broad etiological category does Haemonchus contortus belong to?",
+    "options": [
+      "A) Physical cause",
+      "B) Biological / Viable cause (Parasitic agent)",
+      "C) Idiopathic cause"
+    ],
+    "correct_option": "B",
+    "feedback_correct": "Correct! Helminths and parasites are living (viable) biological agents that invade and parasitize host tissues.",
+    "feedback_incorrect": "Good attempt! Is Haemonchus contortus a living biological organism or an inorganic force?",
+    "term_card": {
+      "term": "Biological / Viable Cause",
+      "meaning": "Living infectious micro- or macro-organisms including bacteria, viruses, fungi, mycoplasma, rickettsia, and parasites.",
+      "example": "Foot-and-Mouth Disease virus in cattle, Anthrax bacteria in sheep, or Haemonchus worms."
+    },
+    "recap": "Biological causes are living, replicating agents that infect or parasitize animal tissues."
+  },
+  "session_6": {
+    "title": "Session 6 of 7 — Nutritional & Immunological Causes",
+    "salutation": "Almost at the finish line, {student_name}! Welcome to Session 6.",
+    "scenario": "A high-yielding dairy cow collapses shortly after calving and cannot stand up. Blood tests reveal acute serum calcium depletion (Milk Fever / Parturient Paresis).",
+    "question": "What etiological category best describes Milk Fever?",
+    "options": [
+      "A) Acute Metabolic / Nutritional Imbalance",
+      "B) Iatrogenic cause",
+      "C) Genetic mutation"
+    ],
+    "correct_option": "A",
+    "feedback_correct": "Exactly right! Acute metabolic deficiency of calcium around calving causes milk fever.",
+    "feedback_incorrect": "Good attempt! Consider whether acute lack of an essential mineral relates to metabolic/nutritional balance.",
+    "term_card": {
+      "term": "Nutritional / Metabolic Cause",
+      "meaning": "Disease resulting from acute or chronic deficiency, excess, or metabolic imbalance of essential nutrients.",
+      "example": "Vitamin B1 deficiency causing cerebrocortical necrosis in sheep, or Hypocalcemia in dairy cows."
+    },
+    "recap": "Nutritional and metabolic causes stem from imbalances in essential elements required for systemic function."
+  },
+  "session_7": {
+    "title": "Session 7 of 7 — Complete Classification & Consolidation",
+    "salutation": "Final session, {student_name}! Let's consolidate everything you have learned.",
+    "scenario": "A dog develops severe facial swelling, respiratory distress, and systemic collapse (anaphylaxis) within 5 minutes of receiving a wasp sting.",
+    "question": "Which etiological category primarily drives this acute allergic reaction?",
+    "options": [
+      "A) Immunological (Hypersensitivity Reaction)",
+      "B) Physical Cause",
+      "C) Nutritional Cause"
+    ],
+    "correct_option": "A",
+    "feedback_correct": "Excellent! Anaphylaxis is an extreme, rapid immunological hypersensitivity reaction.",
+    "feedback_incorrect": "Good attempt! Re-read the scenario—the body's own immune system overreacted violently to the venom allergen.",
+    "term_card": {
+      "term": "Etiological Classification Scheme",
+      "meaning": "Systematic organization of all disease causes into Predisposing and Definitive categories.",
+      "example": "Review the full summary matrix generated on your final completion screen."
+    },
+    "recap": "You have successfully mastered all 7 micro-sessions in Veterinary Etiology!"
+  },
+  "completion_matrix": {
+    "header": "📋 Complete Etiology Classification Summary Matrix",
+    "rows": [
+      {
+        "category": "Etiology",
+        "definition": "Study of the cause or origin of disease",
+        "example": "Investigating bovine respiratory disease outbreaks"
+      },
+      {
+        "category": "Predisposing Factors",
+        "definition": "Intrinsic/extrinsic factors increasing susceptibility",
+        "example": "Unpigmented skin in Herefords (Cancer Eye)"
+      },
+      {
+        "category": "Physical Causes",
+        "definition": "Mechanical, thermal, cold, or radiation forces",
+        "example": "Traumatic bone fractures from vehicle accidents"
+      },
+      {
+        "category": "Chemical Causes",
+        "definition": "Toxic chemicals altering cellular function",
+        "example": "Organophosphate pesticide toxicity in dogs"
+      },
+      {
+        "category": "Biological Causes",
+        "definition": "Living infectious micro- or macro-organisms",
+        "example": "Haemonchus contortus parasite in sheep"
+      },
+      {
+        "category": "Nutritional Causes",
+        "definition": "Excess, deficiency, or metabolic imbalance",
+        "example": "Milk fever (Acute Calcium deficiency)"
+      },
+      {
+        "category": "Immunological Causes",
+        "definition": "Overactive or abnormal immune responses",
+        "example": "Anaphylactic reaction to insect stings"
+      }
+    ]
+  }
+}
