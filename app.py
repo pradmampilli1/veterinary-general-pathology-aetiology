@@ -152,7 +152,7 @@ When Session 7 is successfully completed, output the final message along with th
 """
 
 # -----------------------------------------------------------------------------
-# 3. INITIALIZE GEMINI CLIENT & SESSION STATE WITH AUTOMATIC FALLBACK
+# 3. INITIALIZE GEMINI CLIENT & SESSION STATE WITH DYNAMIC MODEL RESOLUTION
 # -----------------------------------------------------------------------------
 api_key = os.environ.get("GEMINI_API_KEY") or st.secrets.get("GEMINI_API_KEY", None)
 
@@ -168,40 +168,43 @@ if "chat_history" not in st.session_state:
 if "session_complete_pending" not in st.session_state:
     st.session_state.session_complete_pending = False
 
-# Auto-fallback list to guarantee instant match across API versions
-CANDIDATE_MODELS = [
-    "gemini-2.5-flash",
-    "gemini-2.0-flash",
-    "gemini-1.5-flash-8b",
-]
+# Helper function to dynamically find the best available model for your API key
+def get_best_model_name():
+    try:
+        available_models = [m.name for m in client.models.list()]
+        # Preferred models ordered by speed and capability
+        preferences = [
+            "gemini-2.5-flash",
+            "gemini-2.0-flash",
+            "gemini-1.5-flash",
+            "gemini-flash"
+        ]
+        for pref in preferences:
+            for m in available_models:
+                if pref in m:
+                    return m
+        # If no preferred model found, pick the first supported generateContent model
+        if available_models:
+            return available_models[0]
+    except Exception:
+        pass
+    return "gemini-2.5-flash"  # Fallback default
 
 if "chat" not in st.session_state:
-    chat_initialized = False
-    last_error = None
-
-    for model_name in CANDIDATE_MODELS:
-        try:
-            chat_session = client.chats.create(
-                model=model_name,
-                config=types.GenerateContentConfig(
-                    system_instruction=SYSTEM_PROMPT,
-                    temperature=0.2,
-                    max_output_tokens=600,
-                ),
-            )
-            initial_response = chat_session.send_message("Start Session 1 of 7.")
-            
-            # Save successful chat session and history
-            st.session_state.chat = chat_session
-            st.session_state.chat_history.append({"role": "model", "text": initial_response.text})
-            chat_initialized = True
-            break
-        except Exception as e:
-            last_error = e
-            continue
-
-    if not chat_initialized:
-        st.error(f"Error starting chat session: {last_error}")
+    selected_model = get_best_model_name()
+    try:
+        st.session_state.chat = client.chats.create(
+            model=selected_model,
+            config=types.GenerateContentConfig(
+                system_instruction=SYSTEM_PROMPT,
+                temperature=0.3,
+                max_output_tokens=600,
+            ),
+        )
+        initial_response = st.session_state.chat.send_message("Start Session 1 of 7.")
+        st.session_state.chat_history.append({"role": "model", "text": initial_response.text})
+    except Exception as e:
+        st.error(f"Error starting chat session with model `{selected_model}`: {e}")
         st.stop()
 
 # -----------------------------------------------------------------------------
