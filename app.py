@@ -1,6 +1,8 @@
 import os
+import random
 import streamlit as st
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 # -----------------------------------------------------------------------------
 # 1. STREAMLIT PAGE CONFIGURATION
@@ -151,15 +153,32 @@ When Session 7 is successfully completed, output the final message along with th
 """
 
 # -----------------------------------------------------------------------------
-# 3. INITIALIZE GEMINI CLIENT & SESSION STATE
+# 3. ROTATING KEY MANAGEMENT & GEMINI INITIALIZATION
 # -----------------------------------------------------------------------------
-api_key = os.environ.get("GEMINI_API_KEY") or st.secrets.get("GEMINI_API_KEY", None)
 
-if not api_key:
-    st.error("🔑 Please set your `GEMINI_API_KEY` in environment variables or Streamlit secrets.")
-    st.stop()
-
-genai.configure(api_key=api_key)
+def get_gemini_client():
+    """Finds all GEMINI keys in Streamlit secrets and picks one randomly."""
+    available_keys = []
+    
+    # 1. Look through Streamlit secrets for keys starting with GEMINI
+    for key in st.secrets:
+        if key.startswith("GEMINI"):
+            val = st.secrets[key]
+            if isinstance(val, str) and val.strip():
+                available_keys.append(val.strip())
+                
+    # 2. Fallback to standard environment variable
+    if not available_keys:
+        env_key = os.environ.get("GEMINI_API_KEY")
+        if env_key:
+            available_keys.append(env_key.strip())
+            
+    if not available_keys:
+        st.error("🔑 Please set at least one `GEMINI_API_KEY` in Streamlit secrets.")
+        st.stop()
+        
+    selected_key = random.choice(available_keys)
+    return genai.Client(api_key=selected_key)
 
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
@@ -167,35 +186,21 @@ if "chat_history" not in st.session_state:
 if "session_complete_pending" not in st.session_state:
     st.session_state.session_complete_pending = False
 
-# Fallback sequence targeting active Gemini models
-MODEL_CANDIDATES = ["gemini-2.0-flash", "gemini-2.5-flash"]
-
 if "chat" not in st.session_state:
-    chat_initialized = False
-    error_logs = []
-
-    for name in MODEL_CANDIDATES:
-        try:
-            model = genai.GenerativeModel(
-                model_name=name,
+    try:
+        client = get_gemini_client()
+        st.session_state.chat = client.chats.create(
+            model="gemini-3.8-flash",
+            config=types.GenerateContentConfig(
                 system_instruction=SYSTEM_PROMPT,
-                generation_config=genai.types.GenerationConfig(
-                    temperature=0.3,
-                    max_output_tokens=600,
-                ),
-            )
-            chat_session = model.start_chat(history=[])
-            initial_response = chat_session.send_message("Start Session 1 of 7.")
-            
-            st.session_state.chat = chat_session
-            st.session_state.chat_history.append({"role": "model", "text": initial_response.text})
-            chat_initialized = True
-            break
-        except Exception as e:
-            error_logs.append(f"{name}: {str(e)}")
-
-    if not chat_initialized:
-        st.error(f"Initialization Failed: {' | '.join(error_logs)}")
+                temperature=0.3,
+                max_output_tokens=600,
+            ),
+        )
+        initial_response = st.session_state.chat.send_message("Start Session 1 of 7.")
+        st.session_state.chat_history.append({"role": "model", "text": initial_response.text})
+    except Exception as e:
+        st.error(f"Error starting chat session: {e}")
         st.stop()
 
 # -----------------------------------------------------------------------------
