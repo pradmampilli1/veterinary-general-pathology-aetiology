@@ -167,12 +167,14 @@ if "chat_history" not in st.session_state:
 if "session_complete_pending" not in st.session_state:
     st.session_state.session_complete_pending = False
 
-# Robust initialization logic ensuring stable model endpoint selection
-if "chat" not in st.session_state:
-    model_names = ["gemini-1.5-flash", "gemini-pro"]
-    chat_initialized = False
+# Fallback sequence targeting active Gemini models
+MODEL_CANDIDATES = ["gemini-2.0-flash", "gemini-2.5-flash"]
 
-    for name in model_names:
+if "chat" not in st.session_state:
+    chat_initialized = False
+    error_logs = []
+
+    for name in MODEL_CANDIDATES:
         try:
             model = genai.GenerativeModel(
                 model_name=name,
@@ -190,10 +192,10 @@ if "chat" not in st.session_state:
             chat_initialized = True
             break
         except Exception as e:
-            continue
+            error_logs.append(f"{name}: {str(e)}")
 
     if not chat_initialized:
-        st.error("Error initializing Gemini API. Please verify your API key permissions in Streamlit secrets.")
+        st.error(f"Initialization Failed: {' | '.join(error_logs)}")
         st.stop()
 
 # -----------------------------------------------------------------------------
