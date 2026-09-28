@@ -1,0 +1,128 @@
+{
+  "session_1": {
+    "title": "Session 1 of 7 — What is Etiology?",
+    "scenario": "Two calves are born on the same farm, live in the exact same pasture, and drink the same water. After a sudden drop in temperature, one calf develops a severe cough and fever, while the other stays healthy and active.",
+    "question": "Why do you think one calf got sick while the other stayed healthy?",
+    "options": [
+      "A) The sick calf was just unlucky.",
+      "B) Something specific happened to or entered the sick calf that didn't affect the healthy one.",
+      "C) Calves always take turns getting sick."
+    ],
+    "correct_option": "B",
+    "feedback_correct": "Correct! Disease occurs because a specific cause acts upon an animal.",
+    "term_card": {
+      "term": "Etiology",
+      "meaning": "The study of the cause or origin of disease.",
+      "example": "Determining whether a cow's respiratory signs are caused by a virus, bacteria, or cold stress."
+    },
+    "recap": "Etiology asks the central question: WHY did this animal become sick?"
+  },
+  "session_2": {
+    "title": "Session 2 of 7 — Predisposing Causes",
+    "scenario": "A herd of mixed-breed cattle is exposed to intense sunlight. White-faced Hereford cattle develop skin lesions on their unpigmented eyelids, while fully pigmented Angus cattle show no lesions.",
+    "question": "What type of factor made the Hereford cattle more susceptible?",
+    "options": [
+      "A) Definitive cause",
+      "B) Predisposing cause (Color/Pigmentation)",
+      "C) Iatrogenic cause"
+    ],
+    "correct_option": "B",
+    "feedback_correct": "Spot on! Lack of skin pigmentation is a predisposing factor that increases susceptibility to UV damage.",
+    "term_card": {
+      "term": "Predisposition Factor",
+      "meaning": "A factor intrinsic or extrinsic to the animal that increases its susceptibility to disease.",
+      "example": "Age, species, breed, sex, or lack of pigmentation."
+    },
+    "recap": "Predisposing causes do not directly initiate disease; they make the animal more vulnerable."
+  },
+  "session_3": {
+    "title": "Session 3 of 7 — Physical Causes",
+    "scenario": "A dog is brought to the clinic with severe tissue damage and limb fractures following a motor vehicle accident.",
+    "question": "Which category of direct cause initiated this condition?",
+    "options": [
+      "A) Physical Cause (Trauma)",
+      "B) Chemical Cause",
+      "C) Biological Cause"
+    ],
+    "correct_option": "A",
+    "feedback_correct": "Correct! Mechanical kinetic energy (trauma) directly caused the structural damage.",
+    "term_card": {
+      "term": "Physical Cause",
+      "meaning": "Environmental energy or force acting on tissues (Trauma, Heat, Cold, Radiation).",
+      "example": "Frostbite from extreme cold or burns from excess heat."
+    },
+    "recap": "Physical causes involve external physical forces or thermal radiation damaging body tissues."
+  },
+  "session_4": {
+    "title": "Session 4 of 7 — Chemical Causes and Toxins",
+    "scenario": "A farm dog accidentally ingests a stored pesticide container and shows severe muscular twitching and salivation.",
+    "question": "How should this cause be classified?",
+    "options": [
+      "A) Biological cause",
+      "B) Toxic / Chemical cause",
+      "C) Nutritional deficiency"
+    ],
+    "correct_option": "B",
+    "feedback_correct": "Correct! Pesticides are chemical toxins that disrupt physiological function.",
+    "term_card": {
+      "term": "Toxin / Chemical Cause",
+      "meaning": "Substances (acids, alkalis, plant toxins, pesticides) that alter cell function chemically.",
+      "example": "Organophosphate toxicity or phytotoxin ingestion."
+    },
+    "recap": "Chemicals and toxins act through chemical injury rather than mechanical force."
+  },
+  "session_5": {
+    "title": "Session 5 of 7 — Biological / Viable Causes",
+    "scenario": "A flock of sheep exhibits severe anemia and bottle jaw due to a heavy Haemonchus parasite infection in the abomasum.",
+    "question": "What broad etiological group does Haemonchus belong to?",
+    "options": [
+      "A) Physical cause",
+      "B) Biological / Viable cause (Parasite)",
+      "C) Idiopathic cause"
+    ],
+    "correct_option": "B",
+    "feedback_correct": "Correct! Helminths and parasites are living (viable) biological causes of disease.",
+    "term_card": {
+      "term": "Biological / Viable Cause",
+      "meaning": "Living infectious organisms including bacteria, viruses, fungi, mycoplasma, rickettsia, and parasites.",
+      "example": "Foot-and-Mouth Disease virus in cattle or Anthrax bacteria in sheep."
+    },
+    "recap": "Biological causes are living or replicating agents that invade or parasitize host tissues."
+  },
+  "session_6": {
+    "title": "Session 6 of 7 — Nutritional, Immunological & Miscellaneous",
+    "scenario": "A high-producing dairy cow collapses shortly after calving due to acute blood calcium depletion (milk fever).",
+    "question": "What type of cause is milk fever?",
+    "options": [
+      "A) Nutritional / Metabolic imbalance",
+      "B) Iatrogenic cause",
+      "C) Genetic cause"
+    ],
+    "correct_option": "A",
+    "feedback_correct": "Exactly right! Acute metabolic deficiency of calcium around parturition causes milk fever.",
+    "term_card": {
+      "term": "Nutritional Cause",
+      "meaning": "Disease resulting from acute or chronic deficiency or excess of essential nutrients.",
+      "example": "Vitamin B1 deficiency causing neurological signs in poultry."
+    },
+    "recap": "Nutritional, immunological (hypersensitivity), iatrogenic (treatment-related), and idiopathic causes complete our definitive list."
+  },
+  "session_7": {
+    "title": "Session 7 of 7 — Complete Classification & Consolidation",
+    "scenario": "A dog develops a severe allergic reaction (anaphylaxis) minutes after receiving an insect sting.",
+    "question": "Which etiological category applies here?",
+    "options": [
+      "A) Immunological (Hypersensitivity)",
+      "B) Physical cause",
+      "C) Iatrogenic cause"
+    ],
+    "correct_option": "A",
+    "feedback_correct": "Excellent! Anaphylaxis is an extreme, rapid immunological hypersensitivity reaction.",
+    "term_card": {
+      "term": "Etiological Matrix",
+      "meaning": "Complete organization of disease causes into Predisposition and Definitive factors.",
+      "example": "Refer to the summary matrix below."
+    },
+    "recap": "You have completed all 7 micro-sessions in Etiology!"
+  }
+}
