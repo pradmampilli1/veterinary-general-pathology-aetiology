@@ -235,3 +235,4 @@ if user_prompt:
             st.session_state.chat_history.append({"role": "model", "text": resp_text})
 
     st.rerun()
+ 
