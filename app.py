@@ -116,10 +116,11 @@ When a session's objectives are met:
 3. STOP GENERATING CONTENT IMMEDIATELY.
 """
 
+# Verified Active Gemini Model Priority Chain
 MODELS_TO_TRY = [
-    "gemini-2.5-flash",
-    "gemini-2.0-flash",
-    "gemini-1.5-flash"
+    "gemini-3.5-flash-lite",
+    "gemini-3.5-flash",
+    "gemini-2.5-flash"
 ]
 
 # -----------------------------------------------------------------------------
@@ -137,10 +138,8 @@ def load_backup_curriculum():
         return None
 
 def get_all_keys():
-    """Retrieves all API keys from Streamlit secrets or OS environment (case-insensitive)."""
+    """Retrieves all API keys from Streamlit secrets or OS environment."""
     keys = []
-    
-    # 1. Search Streamlit Secrets
     try:
         for k in st.secrets:
             val = st.secrets[k]
@@ -150,7 +149,6 @@ def get_all_keys():
     except Exception:
         pass
 
-    # 2. Search OS Environment Variables
     if not keys:
         for env_var in ["GEMINI_API_KEY", "GOOGLE_API_KEY", "GEMINI_KEY"]:
             env_val = os.environ.get(env_var)
@@ -160,8 +158,10 @@ def get_all_keys():
     return list(set(keys))
 
 def _single_api_call(key, contents):
-    """Executes an API request across models with multi-SDK compatibility."""
-    # Attempt Primary SDK (google.genai)
+    """Executes API request using the official Google GenAI SDK with active models."""
+    last_err = None
+    
+    # Primary GenAI SDK
     try:
         from google import genai
         from google.genai import types
@@ -177,13 +177,14 @@ def _single_api_call(key, contents):
                     ),
                 )
                 if response and response.text:
-                    return response.text
-            except Exception:
+                    return response.text, None
+            except Exception as err:
+                last_err = str(err)
                 continue
-    except Exception:
-        pass
+    except Exception as err:
+        last_err = str(err)
 
-    # Attempt Fallback SDK (google.generativeai)
+    # Legacy Fallback GenAI SDK
     try:
         import google.generativeai as legacy_genai
         legacy_genai.configure(api_key=key)
@@ -196,16 +197,17 @@ def _single_api_call(key, contents):
                 formatted_prompt = contents[-1]["parts"][0] if isinstance(contents[-1], dict) else str(contents[-1])
                 response = model.generate_content(formatted_prompt)
                 if response and response.text:
-                    return response.text
-            except Exception:
+                    return response.text, None
+            except Exception as err:
+                last_err = str(err)
                 continue
-    except Exception:
-        pass
+    except Exception as err:
+        last_err = str(err)
 
-    return None
+    return None, last_err
 
 def generate_tutor_response(history_list):
-    """Generates response using live API with a 10-second timeout."""
+    """Generates response using live API with an 8-second timeout."""
     keys = get_all_keys()
     if not keys:
         st.session_state.bystander_reason = "No API Key found in Streamlit Secrets"
@@ -226,14 +228,17 @@ def generate_tutor_response(history_list):
         try:
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 future = executor.submit(_single_api_call, key, contents)
-                result = future.result(timeout=10)
+                result, err_msg = future.result(timeout=8)
                 if result:
                     return result
+                elif err_msg:
+                    st.session_state.bystander_reason = f"API Error: {err_msg}"
         except Exception as e:
-            st.session_state.bystander_reason = f"API Request timed out or failed: {str(e)}"
+            st.session_state.bystander_reason = f"API Timeout or Connection Exception: {str(e)}"
             continue
 
-    st.session_state.bystander_reason = "All model attempts failed or rate limited"
+    if not st.session_state.bystander_reason:
+        st.session_state.bystander_reason = "All model attempts failed or key quota exceeded"
     return None
 
 def render_custom_markdown(text):
