@@ -126,12 +126,11 @@ def generate_tutor_response(history_list):
             )
         )
 
-    # Try keys with a strict 8-second execution cap
     for key in keys:
         try:
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 future = executor.submit(_single_api_call, key, contents)
-                result = future.result(timeout=8) # 8-second timeout cap
+                result = future.result(timeout=8)
                 if result:
                     return result
         except Exception:
@@ -151,6 +150,9 @@ def render_custom_markdown(text):
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
+if "completed_bystander_sessions" not in st.session_state:
+    st.session_state.completed_bystander_sessions = []
+
 if "session_complete_pending" not in st.session_state:
     st.session_state.session_complete_pending = False
 
@@ -161,7 +163,7 @@ if "bystander_mode" not in st.session_state:
     st.session_state.bystander_mode = False
 
 # Start lesson on first load
-if not st.session_state.chat_history:
+if not st.session_state.chat_history and not st.session_state.completed_bystander_sessions:
     init_prompt = (
         "Begin Session 1 of 7 now. "
         "Start with the scenario of two calves on the same farm where one becomes sick and one stays healthy. "
@@ -184,51 +186,101 @@ if st.session_state.bystander_mode:
     st.info("⚡ **Bystander Backup Engine Active** (Running in high-reliability offline mode)")
     
     backup_data = load_backup_curriculum()
-    sess_key = f"session_{st.session_state.current_session_num}"
     
-    if backup_data and sess_key in backup_data:
-        curr_session = backup_data[sess_key]
+    # Display previously completed sessions
+    for comp in st.session_state.completed_bystander_sessions:
+        with st.expander(f"✅ Completed: {comp['title']}", expanded=False):
+            st.write(comp['scenario'])
+            st.success(comp['feedback'])
+            term = comp['term_card']
+            st.markdown(
+                f"📌 **TERM: {term['term']}**\n"
+                f"• **Simple meaning:** {term['meaning']}\n"
+                f"• **Veterinary example:** {term['example']}"
+            )
+            st.caption(f"Recap: {comp['recap']}")
+
+    # Check if all 7 sessions are finished
+    if st.session_state.current_session_num > 7:
+        st.balloons()
+        st.success("🎉 **MODULE COMPLETED SUCCESSFULLY!**")
+        st.markdown("""
+        ### 📋 Complete Etiology Classification Summary Matrix
         
-        st.subheader(curr_session["title"])
-        st.write(curr_session["scenario"])
-        st.write(f"**Question:** {curr_session['question']}")
+        | Etiological Category | Primary Definition | Primary Veterinary Example |
+        | :--- | :--- | :--- |
+        | **Etiology** | Study of the cause/origin of disease | Investigating bovine respiratory outbreaks |
+        | **Predisposing Factors** | Intrinsic/extrinsic factors increasing susceptibility | White face color in Herefords (Cancer Eye) |
+        | **Physical Causes** | Mechanical, thermal, or radiation forces | Traumatic fractures from vehicle accidents |
+        | **Chemical Causes** | Toxic chemicals altering cellular function | Organophosphate pesticide poisoning in dogs |
+        | **Biological Causes** | Living infectious micro/macro-organisms | *Haemonchus contortus* parasite in sheep |
+        | **Nutritional Causes** | Excess or deficiency of essential nutrients | Milk fever (Acute Calcium deficiency) |
+        | **Immunological Causes** | Overactive or abnormal immune responses | Anaphylactic allergic reactions to insect stings |
+        """)
         
-        user_choice = st.radio(
-            "Select your answer:", 
-            curr_session["options"], 
-            key=f"radio_{st.session_state.current_session_num}"
-        )
-        
-        if st.button("Submit Answer", type="primary"):
-            selected_letter = user_choice.split(")")[0].strip()
-            
-            if selected_letter == curr_session["correct_option"]:
-                st.success(curr_session["feedback_correct"])
-                
-                term = curr_session["term_card"]
-                st.markdown(
-                    f"📌 **TERM: {term['term']}**\n"
-                    f"• **Simple meaning:** {term['meaning']}\n"
-                    f"• **Veterinary example:** {term['example']}"
-                )
-                
-                st.write("---")
-                st.write(f"**Recap:** {curr_session['recap']}")
-                st.session_state.session_complete_pending = True
-            else:
-                st.warning("Good attempt! Think about what specifically acted upon or entered the sick animal.")
-        
-        if st.session_state.session_complete_pending:
-            st.write("---")
-            next_num = st.session_state.current_session_num + 1
-            btn_label = f"▶ TAP TO CONTINUE TO SESSION {next_num} OF 7" if next_num <= 7 else "🎉 MODULE COMPLETE"
-            
-            if st.button(btn_label, type="primary", use_container_width=True):
-                st.session_state.session_complete_pending = False
-                st.session_state.current_session_num = next_num
-                st.rerun()
+        if st.button("🔄 Restart Module", type="primary"):
+            st.session_state.current_session_num = 1
+            st.session_state.completed_bystander_sessions = []
+            st.session_state.session_complete_pending = False
+            st.session_state.bystander_mode = False
+            st.rerun()
+
     else:
-        st.error("Backup curriculum file missing or unreadable.")
+        sess_key = f"session_{st.session_state.current_session_num}"
+        if backup_data and sess_key in backup_data:
+            curr_session = backup_data[sess_key]
+            
+            st.subheader(curr_session["title"])
+            st.write(curr_session["scenario"])
+            st.write(f"**Question:** {curr_session['question']}")
+            
+            user_choice = st.radio(
+                "Select your answer:", 
+                curr_session["options"], 
+                key=f"radio_{st.session_state.current_session_num}"
+            )
+            
+            if st.button("Submit Answer", type="primary"):
+                selected_letter = user_choice.split(")")[0].strip()
+                
+                if selected_letter == curr_session["correct_option"]:
+                    st.success(curr_session["feedback_correct"])
+                    
+                    term = curr_session["term_card"]
+                    st.markdown(
+                        f"📌 **TERM: {term['term']}**\n"
+                        f"• **Simple meaning:** {term['meaning']}\n"
+                        f"• **Veterinary example:** {term['example']}"
+                    )
+                    
+                    st.write("---")
+                    st.write(f"**Recap:** {curr_session['recap']}")
+                    
+                    # Store completed session state if not already added
+                    if not any(c['title'] == curr_session['title'] for c in st.session_state.completed_bystander_sessions):
+                        st.session_state.completed_bystander_sessions.append({
+                            "title": curr_session["title"],
+                            "scenario": curr_session["scenario"],
+                            "feedback": curr_session["feedback_correct"],
+                            "term_card": curr_session["term_card"],
+                            "recap": curr_session["recap"]
+                        })
+                    
+                    st.session_state.session_complete_pending = True
+                else:
+                    st.warning("Good attempt! Re-read the scenario carefully and select the best matching option.")
+            
+            if st.session_state.session_complete_pending:
+                st.write("---")
+                next_num = st.session_state.current_session_num + 1
+                btn_label = f"▶ TAP TO CONTINUE TO SESSION {next_num} OF 7" if next_num <= 7 else "🎉 VIEW FINAL ETIOLOGY MATRIX"
+                
+                if st.button(btn_label, type="primary", use_container_width=True):
+                    st.session_state.session_complete_pending = False
+                    st.session_state.current_session_num = next_num
+                    st.rerun()
+        else:
+            st.error("Backup curriculum file missing or unreadable.")
 
 # -----------------------------------------------------------------------------
 # 6. LIVE AI MODE RENDERER
@@ -259,22 +311,26 @@ else:
             st.session_state.session_complete_pending = False
             st.session_state.current_session_num = next_num
             
-            user_input = (
-                f"I am ready. Begin Session {next_num} of 7 now. "
-                f"Start with a simple story/scenario and ask ONE question. Do NOT define terms in the opening message."
-            )
-            st.session_state.chat_history.append({"role": "user", "text": user_input})
+            if next_num > 7:
+                st.session_state.bystander_mode = True
+                st.rerun()
+            else:
+                user_input = (
+                    f"I am ready. Begin Session {next_num} of 7 now. "
+                    f"Start with a simple story/scenario and ask ONE question. Do NOT define terms in the opening message."
+                )
+                st.session_state.chat_history.append({"role": "user", "text": user_input})
 
-            with st.chat_message("assistant"):
-                with st.spinner("Preparing next session..."):
-                    resp_text = generate_tutor_response(st.session_state.chat_history)
-                    if resp_text:
-                        render_custom_markdown(resp_text)
-                        st.session_state.chat_history.append({"role": "model", "text": resp_text})
-                    else:
-                        st.session_state.bystander_mode = True
-                        st.rerun()
-            st.rerun()
+                with st.chat_message("assistant"):
+                    with st.spinner("Preparing next session..."):
+                        resp_text = generate_tutor_response(st.session_state.chat_history)
+                        if resp_text:
+                            render_custom_markdown(resp_text)
+                            st.session_state.chat_history.append({"role": "model", "text": resp_text})
+                        else:
+                            st.session_state.bystander_mode = True
+                            st.rerun()
+                st.rerun()
 
     user_prompt = st.chat_input(
         "Type your answer here...", 
