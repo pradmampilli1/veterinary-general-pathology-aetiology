@@ -152,15 +152,13 @@ When Session 7 is successfully completed, output the final message along with th
 7. Did I append `[SESSION_COMPLETE]` if finished and STOP?
 """
 
-# Active endpoints on the current v1beta Gemini API
-MODELS_TO_TRY = ["gemini-3.8-flash", "gemini-3.5-flash-lite"]
+MODELS_TO_TRY = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash-latest"]
 
 # -----------------------------------------------------------------------------
-# 3. ROTATING KEY & MODEL FALLBACK MANAGEMENT
+# 3. HELPER FUNCTIONS & CHAT INITIALIZATION
 # -----------------------------------------------------------------------------
 
 def get_all_keys():
-    """Extract all available Gemini API keys from st.secrets and os.environ."""
     keys = []
     for k in st.secrets:
         if k.startswith("GEMINI"):
@@ -173,6 +171,47 @@ def get_all_keys():
             keys.append(env_key.strip())
     return keys
 
+def create_chat_session():
+    """Attempts to create a new chat session across available keys and models."""
+    all_keys = get_all_keys()
+    if not all_keys:
+        return None, "No API keys configured."
+    
+    random.shuffle(all_keys)
+    last_err = ""
+    for key in all_keys:
+        for model in MODELS_TO_TRY:
+            try:
+                client = genai.Client(api_key=key)
+                session = client.chats.create(
+                    model=model,
+                    config=types.GenerateContentConfig(
+                        system_instruction=SYSTEM_PROMPT,
+                        temperature=0.3,
+                        max_output_tokens=600,
+                    ),
+                )
+                return session, None
+            except Exception as e:
+                last_err = str(e)
+                continue
+    return None, last_err
+
+def send_user_message(user_text):
+    """Sends a message with automatic session restoration if an API glitch occurs."""
+    try:
+        response = st.session_state.chat.send_message(user_text)
+        return response.text
+    except Exception:
+        # Re-initialize chat session on failure and retry
+        new_session, err = create_chat_session()
+        if new_session:
+            st.session_state.chat = new_session
+            response = st.session_state.chat.send_message(user_text)
+            return response.text
+        else:
+            return f"⚠️ High traffic on API servers. Please try sending your message again in a few seconds."
+
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
@@ -180,41 +219,17 @@ if "session_complete_pending" not in st.session_state:
     st.session_state.session_complete_pending = False
 
 if "chat" not in st.session_state:
-    all_keys = get_all_keys()
-    if not all_keys:
-        st.error("🔑 Please set at least one `GEMINI_API_KEY` in Streamlit secrets.")
+    session, err = create_chat_session()
+    if not session:
+        st.error(f"Error starting chat session: {err}")
         st.stop()
+    st.session_state.chat = session
     
-    random.shuffle(all_keys)
-    chat_created = False
-    last_error = ""
-
-    # Try every combination of Key and Active Model until one succeeds
-    for key in all_keys:
-        for model_name in MODELS_TO_TRY:
-            try:
-                client = genai.Client(api_key=key)
-                session = client.chats.create(
-                    model=model_name,
-                    config=types.GenerateContentConfig(
-                        system_instruction=SYSTEM_PROMPT,
-                        temperature=0.3,
-                        max_output_tokens=600,
-                    ),
-                )
-                initial_response = session.send_message("Start Session 1 of 7.")
-                st.session_state.chat = session
-                st.session_state.chat_history.append({"role": "model", "text": initial_response.text})
-                chat_created = True
-                break
-            except Exception as e:
-                last_error = str(e)
-                continue
-        if chat_created:
-            break
-
-    if not chat_created:
-        st.error(f"Servers are temporarily busy. Please refresh the page in a moment. (Details: {last_error})")
+    try:
+        init_res = st.session_state.chat.send_message("Start Session 1 of 7.")
+        st.session_state.chat_history.append({"role": "model", "text": init_res.text})
+    except Exception as e:
+        st.error(f"Failed to start first lesson: {e}")
         st.stop()
 
 # -----------------------------------------------------------------------------
@@ -247,9 +262,9 @@ if st.session_state.session_complete_pending:
 
         with st.chat_message("assistant"):
             with st.spinner("Preparing next session..."):
-                response = st.session_state.chat.send_message(user_input)
-                st.markdown(response.text.replace("[SESSION_COMPLETE]", "").strip())
-                st.session_state.chat_history.append({"role": "model", "text": response.text})
+                resp_text = send_user_message(user_input)
+                st.markdown(resp_text.replace("[SESSION_COMPLETE]", "").strip())
+                st.session_state.chat_history.append({"role": "model", "text": resp_text})
         st.rerun()
 
 user_prompt = st.chat_input(
@@ -264,9 +279,9 @@ if user_prompt:
 
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
-            response = st.session_state.chat.send_message(user_prompt)
-            clean_response = response.text.replace("[SESSION_COMPLETE]", "").strip()
-            st.markdown(clean_response)
-            st.session_state.chat_history.append({"role": "model", "text": response.text})
+            resp_text = send_user_message(user_prompt)
+            clean_resp = resp_text.replace("[SESSION_COMPLETE]", "").strip()
+            st.markdown(clean_resp)
+            st.session_state.chat_history.append({"role": "model", "text": resp_text})
 
     st.rerun()
