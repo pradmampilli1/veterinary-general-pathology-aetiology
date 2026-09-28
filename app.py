@@ -41,7 +41,7 @@ You are an experienced Veterinary Pathology teacher and undergraduate pedagogy e
 ### IN-SCOPE (Etiology & Etiological Classification ONLY):
 * Meaning of etiology
 * Causes of disease
-* Predisposing factors
+* Predisposition factors
 * Exciting / Direct / Primary causes
 * Contributing or modifying factors
 * Broad classification of etiological factors (Physical, Chemical, Biological, Nutritional, Toxins, Immunological, Genetic)
@@ -168,18 +168,22 @@ if "chat_history" not in st.session_state:
 if "session_complete_pending" not in st.session_state:
     st.session_state.session_complete_pending = False
 
-# Initializing Gemini Chat Session
+# Initializing Gemini Chat Session using gemini-2.5-flash for max speed & accuracy
 if "chat" not in st.session_state:
-    st.session_state.chat = client.chats.create(
-        model="gemini-2.5-flash",
-        config=types.GenerateContentConfig(
-            system_instruction=SYSTEM_PROMPT,
-            temperature=0.3,
-        ),
-    )
-    # Trigger initial start message from the agent
-    initial_response = st.session_state.chat.send_message("Start Session 1 of 7.")
-    st.session_state.chat_history.append({"role": "model", "text": initial_response.text})
+    try:
+        st.session_state.chat = client.chats.create(
+            model="gemini-2.5-flash",
+            config=types.GenerateContentConfig(
+                system_instruction=SYSTEM_PROMPT,
+                temperature=0.2,
+                max_output_tokens=600,  # Fast responses
+            ),
+        )
+        initial_response = st.session_state.chat.send_message("Start Session 1 of 7.")
+        st.session_state.chat_history.append({"role": "model", "text": initial_response.text})
+    except Exception as e:
+        st.error(f"Error starting chat session: {e}")
+        st.stop()
 
 # -----------------------------------------------------------------------------
 # 4. RENDER CONVERSATION HISTORY
@@ -190,7 +194,7 @@ for msg in st.session_state.chat_history:
     with st.chat_message(role):
         st.markdown(clean_text)
 
-# Check if the last assistant message ended with the [SESSION_COMPLETE] marker
+# Check if the last assistant message ended with [SESSION_COMPLETE]
 if st.session_state.chat_history:
     last_msg = st.session_state.chat_history[-1]
     if last_msg["role"] == "model" and "[SESSION_COMPLETE]" in last_msg["text"]:
@@ -200,19 +204,16 @@ if st.session_state.chat_history:
 # 5. USER INTERACTION & TAP-TO-CONTINUE UI
 # -----------------------------------------------------------------------------
 
-# Render interactive button if session complete is triggered
 if st.session_state.session_complete_pending:
     st.write("---")
     if st.button("▶ TAP TO CONTINUE TO NEXT SESSION", type="primary", use_container_width=True):
         st.session_state.session_complete_pending = False
         user_input = "I am ready. Continue to the next session."
         
-        # Display user action in chat
         st.session_state.chat_history.append({"role": "user", "text": user_input})
         with st.chat_message("user"):
             st.markdown(user_input)
 
-        # Get response from AI
         with st.chat_message("assistant"):
             with st.spinner("Preparing next session..."):
                 response = st.session_state.chat.send_message(user_input)
@@ -220,19 +221,16 @@ if st.session_state.session_complete_pending:
                 st.session_state.chat_history.append({"role": "model", "text": response.text})
         st.rerun()
 
-# Standard chat input prompt (disabled while waiting to tap continue)
 user_prompt = st.chat_input(
     "Type your answer here...", 
     disabled=st.session_state.session_complete_pending
 )
 
 if user_prompt:
-    # Append user response to chat
     st.session_state.chat_history.append({"role": "user", "text": user_prompt})
     with st.chat_message("user"):
         st.markdown(user_prompt)
 
-    # Generate model response
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
             response = st.session_state.chat.send_message(user_prompt)
