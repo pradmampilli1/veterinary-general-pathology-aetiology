@@ -152,8 +152,8 @@ When Session 7 is successfully completed, output the final message along with th
 7. Did I append `[SESSION_COMPLETE]` if finished and STOP?
 """
 
-# Priority list of supported model endpoints
-MODELS_TO_TRY = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash-latest"]
+# Active endpoints on the current v1beta Gemini API
+MODELS_TO_TRY = ["gemini-3.8-flash", "gemini-3.5-flash-lite"]
 
 # -----------------------------------------------------------------------------
 # 3. ROTATING KEY & MODEL FALLBACK MANAGEMENT
@@ -189,7 +189,7 @@ if "chat" not in st.session_state:
     chat_created = False
     last_error = ""
 
-    # Try every combination of Key and Model until one succeeds
+    # Try every combination of Key and Active Model until one succeeds
     for key in all_keys:
         for model_name in MODELS_TO_TRY:
             try:
