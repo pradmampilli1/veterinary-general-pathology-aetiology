@@ -1,6 +1,5 @@
 import os
 import random
-import time
 import streamlit as st
 from google import genai
 from google.genai import types
@@ -153,8 +152,8 @@ When Session 7 is successfully completed, output the final message along with th
 7. Did I append `[SESSION_COMPLETE]` if finished and STOP?
 """
 
-# Priority fallback list of models
-MODELS_TO_TRY = ["gemini-3.8-flash", "gemini-2.5-flash", "gemini-1.5-flash"]
+# Priority list of supported model endpoints
+MODELS_TO_TRY = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash-latest"]
 
 # -----------------------------------------------------------------------------
 # 3. ROTATING KEY & MODEL FALLBACK MANAGEMENT
