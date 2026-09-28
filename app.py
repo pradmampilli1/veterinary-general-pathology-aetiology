@@ -115,13 +115,11 @@ When a session's objectives are met:
 3. STOP GENERATING CONTENT IMMEDIATELY.
 """
 
-# Resilient model priority list
+# Supported standard models
 MODELS_TO_TRY = [
-    "gemini-3.5-flash-lite",
-    "gemini-3.5-flash",
-    "gemini-3.1-flash",
-    "gemini-3.0-flash",
     "gemini-2.5-flash",
+    "gemini-2.0-flash",
+    "gemini-1.5-flash"
 ]
 
 # -----------------------------------------------------------------------------
@@ -141,20 +139,31 @@ def load_backup_curriculum():
 def get_all_keys():
     """Retrieves all API keys from Streamlit secrets or OS environment."""
     keys = []
-    for k in st.secrets:
-        if k.startswith("GEMINI"):
-            val = st.secrets[k]
-            if isinstance(val, str) and val.strip():
-                keys.append(val.strip())
+    # Search Streamlit Secrets
+    try:
+        for k in st.secrets:
+            if k.startswith("GEMINI") or k == "GEMINI_API_KEY":
+                val = st.secrets[k]
+                if isinstance(val, str) and val.strip():
+                    keys.append(val.strip())
+    except Exception:
+        pass
+        
+    # Search OS Environment Variables
     if not keys:
         env_key = os.environ.get("GEMINI_API_KEY")
-        if env_key:
+        if env_key and env_key.strip():
             keys.append(env_key.strip())
+            
     return keys
 
 def _single_api_call(key, contents):
-    """Executes an API request, smoothly trying models in order without crashing."""
-    client = genai.Client(api_key=key)
+    """Executes an API request across models."""
+    try:
+        client = genai.Client(api_key=key)
+    except Exception:
+        return None
+
     for model_name in MODELS_TO_TRY:
         try:
             response = client.models.generate_content(
@@ -168,12 +177,11 @@ def _single_api_call(key, contents):
             if response and response.text:
                 return response.text
         except Exception:
-            # If a model fails or doesn't exist, silently try the next model
             continue
     return None
 
 def generate_tutor_response(history_list):
-    """Generates response using live API with an 8-second timeout."""
+    """Generates response using live API with a 10-second timeout."""
     keys = get_all_keys()
     if not keys:
         return None
@@ -193,7 +201,7 @@ def generate_tutor_response(history_list):
         try:
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 future = executor.submit(_single_api_call, key, contents)
-                result = future.result(timeout=8)
+                result = future.result(timeout=10)
                 if result:
                     return result
         except Exception:
@@ -218,6 +226,11 @@ with st.sidebar:
     st.write(f"**Admission No:** {st.session_state.student_id}")
     st.write(f"**Current Session:** {st.session_state.current_session_num} / 7")
     st.write("---")
+    
+    # API Key Diagnostic Check
+    keys_found = len(get_all_keys())
+    st.caption(f"🔑 API Keys Detected: {keys_found}")
+    
     if st.button("🚪 Logout / Switch Student"):
         st.session_state.student_logged_in = False
         st.session_state.chat_history = []
