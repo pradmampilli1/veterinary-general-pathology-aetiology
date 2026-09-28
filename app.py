@@ -151,7 +151,7 @@ When Session 7 is successfully completed, output the final message along with th
 """
 
 # -----------------------------------------------------------------------------
-# 3. INITIALIZE GEMINI CLIENT & SESSION STATE WITH AUTO-MODEL DISCOVERY
+# 3. INITIALIZE GEMINI CLIENT & SESSION STATE
 # -----------------------------------------------------------------------------
 api_key = os.environ.get("GEMINI_API_KEY") or st.secrets.get("GEMINI_API_KEY", None)
 
@@ -167,42 +167,33 @@ if "chat_history" not in st.session_state:
 if "session_complete_pending" not in st.session_state:
     st.session_state.session_complete_pending = False
 
-def find_working_model():
-    """Queries Google API directly for available models to avoid 404 errors."""
-    try:
-        available_models = [
-            m.name for m in genai.list_models() 
-            if "generateContent" in m.supported_generation_methods
-        ]
-        # Check for flash models first
-        for name in available_models:
-            if "flash" in name:
-                return name
-        # Fallback to any available content model
-        if available_models:
-            return available_models[0]
-    except Exception:
-        pass
-    return "models/gemini-1.5-flash"
-
+# Robust initialization logic ensuring stable model endpoint selection
 if "chat" not in st.session_state:
-    working_model = find_working_model()
-    try:
-        model = genai.GenerativeModel(
-            model_name=working_model,
-            system_instruction=SYSTEM_PROMPT,
-            generation_config=genai.types.GenerationConfig(
-                temperature=0.3,
-                max_output_tokens=600,
-            ),
-        )
-        chat_session = model.start_chat(history=[])
-        initial_response = chat_session.send_message("Start Session 1 of 7.")
-        
-        st.session_state.chat = chat_session
-        st.session_state.chat_history.append({"role": "model", "text": initial_response.text})
-    except Exception as e:
-        st.error(f"Error starting chat session with `{working_model}`: {e}")
+    model_names = ["gemini-1.5-flash", "gemini-pro"]
+    chat_initialized = False
+
+    for name in model_names:
+        try:
+            model = genai.GenerativeModel(
+                model_name=name,
+                system_instruction=SYSTEM_PROMPT,
+                generation_config=genai.types.GenerationConfig(
+                    temperature=0.3,
+                    max_output_tokens=600,
+                ),
+            )
+            chat_session = model.start_chat(history=[])
+            initial_response = chat_session.send_message("Start Session 1 of 7.")
+            
+            st.session_state.chat = chat_session
+            st.session_state.chat_history.append({"role": "model", "text": initial_response.text})
+            chat_initialized = True
+            break
+        except Exception as e:
+            continue
+
+    if not chat_initialized:
+        st.error("Error initializing Gemini API. Please verify your API key permissions in Streamlit secrets.")
         st.stop()
 
 # -----------------------------------------------------------------------------
