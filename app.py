@@ -152,8 +152,8 @@ When Session 7 is successfully completed, output the final message along with th
 7. Did I append `[SESSION_COMPLETE]` if finished and STOP?
 """
 
-# Models to attempt in priority order
-MODELS_TO_TRY = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash-latest"]
+# Valid, active endpoints on the current Gemini API
+MODELS_TO_TRY = ["gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-2.5-flash"]
 
 # -----------------------------------------------------------------------------
 # 3. HELPER FUNCTIONS FOR STATE-PERSISTENT API CALLS
@@ -234,7 +234,6 @@ if not st.session_state.chat_history:
 # 5. RENDER CHAT HISTORY
 # -----------------------------------------------------------------------------
 
-# Render history (skip internal setup trigger)
 for idx, msg in enumerate(st.session_state.chat_history):
     if idx == 0 and msg["text"] == "Start Session 1 of 7.":
         continue
