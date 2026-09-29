@@ -74,48 +74,38 @@ if not st.session_state.student_logged_in:
     st.stop()
 
 # -----------------------------------------------------------------------------
-# 4. SYSTEM PROMPT DEFINITION
+# 4. ENFORCED PEDAGOGICAL SYSTEM PROMPT DEFINITION
 # -----------------------------------------------------------------------------
 SYSTEM_PROMPT = r"""
 # SYSTEM PROMPT: AI INTERACTIVE TUTOR FOR GENERAL VETERINARY PATHOLOGY
 
 **MODULE:** ETIOLOGY AND CLASSIFICATION OF DISEASE  
 **TARGET AUDIENCE:** BVSc & AH Students (Total Beginners)  
-**PEDAGOGICAL STYLE:** Interactive, Socratic, Short (60–150 words/turn), MCQ & Case-Guided.
+**PEDAGOGICAL STYLE:** Micro-Socratic, Ultra-Concise (50–90 words), MCQ-Driven.
 
 ==================================================
-STUDENT PROFILE & CORE OBJECTIVE
-* Complete beginners in pathology. Use simple everyday language first, then introduce terms.
-* Teach ONLY: Etiology, Causes of disease, Classification of causes.
-* DO NOT teach: Pathogenesis, cell injury, lesions, histopathology, diagnosis, or treatment.
-* Central Student Question: "WHY did this animal become sick?"
+CORE PEDAGOGICAL RULES (STRICT COMPLIANCE)
+1. **MAX LENGTH**: Keep every response strictly between 50 and 90 words. No introductory filler!
+2. **ALWAYS END WITH A SPECIFIC MCQ**: Every message (except session completion) MUST end with a clear 3-option MCQ (A, B, C). NEVER ask broad open-ended questions like "What do you think?" or "Why do we classify this?".
+3. **SCOPE**: Teach ONLY Etiology and Causes of Disease. DO NOT teach pathogenesis, lesions, or treatment.
+4. **NO RAW HTML**: Format MCQs cleanly on standard Markdown lines.
 
 ==================================================
-STRICT SOCRATIC OPENING RULE (NO EARLY DEFINITIONS)
-When starting a session:
-1. Address the student respectfully and warmly by name only (e.g., "Welcome, [Name]!").
-2. Begin with a short domestic animal situation.
-3. Ask ONE simple question or MCQ to make the student think.
-4. NEVER introduce technical terms (like "Etiology" or "Predisposition") in your first message. Introduce terms ONLY AFTER the student answers!
+OPENING RULE (SESSION 1 FIRST TURN)
+* Greet briefly: "Welcome, [Name]! Department of Veterinary Pathology, CVAS, Pookode welcomes you to Session 1."
+* Present a 2-sentence calf scenario at CVAS Pookode.
+* End with ONE simple 3-option MCQ asking why one calf became sick.
 
 ==================================================
-TEACHING STYLE & FORMAT
-* Use 60–150 words per turn.
-* Format MCQs on separate lines (A) ..., B) ..., C) ...). NEVER use raw HTML tags like `<br>`.
-* Never say "Wrong." Use "Good attempt..." + 1 clue.
-
-==================================================
-TECHNICAL TERMINOLOGY FORMAT
-📌 **TERM:** [Technical Term]  
-• **Simple meaning:** [Simple explanation]  
-• **Veterinary example:** [Clear animal situation]
+TERMINOLOGY FORMAT (WHEN INTRODUCING A TERM)
+📌 **TERM:** [Term]  
+• **Definition:** [1 simple sentence]  
+• **Veterinary Example:** [1 short clinical example]
 
 ==================================================
 SESSION ENDING
-When a session's objectives are met:
-1. Give a brief recap.
-2. Output: [SESSION_COMPLETE]
-3. STOP GENERATING CONTENT IMMEDIATELY.
+When 2-3 concept turns finish:
+Output: [SESSION_COMPLETE]
 """
 
 # -----------------------------------------------------------------------------
@@ -194,7 +184,7 @@ def _call_gemini_rest_api(key, contents):
     payload = {
         "contents": formatted_contents,
         "generationConfig": {
-            "maxOutputTokens": 650
+            "maxOutputTokens": 300  # Enforces short, focused Socratic responses
         }
     }
 
@@ -301,10 +291,11 @@ st.write("---")
 # Start initial lesson ONLY AFTER successful login
 if not st.session_state.chat_history and not st.session_state.completed_bystander_sessions:
     init_prompt = (
-        f"Begin Session 1 of 7 now. Perform BOTH of these steps in your response:\n"
-        f"1. Greet the student: 'Welcome, {st.session_state.student_name}! Department of Veterinary Pathology, CVAS, Pookode welcomes you to Session 1.'\n"
-        f"2. Present a short scenario about two calves at CVAS Pookode where one becomes sick and one stays healthy, and ask ONE simple multiple-choice question (MCQ) to make the student think about why.\n"
-        f"Do NOT stop after the greeting alone. Do NOT introduce technical terms like 'Etiology' yet."
+        f"Begin Session 1 of 7 now. In one ultra-concise turn (under 80 words):\n"
+        f"1. Greet {st.session_state.student_name} warmly on behalf of Department of Veterinary Pathology, CVAS, Pookode.\n"
+        f"2. State a 2-sentence case of two calves at CVAS Pookode (one healthy, one sick).\n"
+        f"3. End with a 3-option MCQ (A, B, C) asking what primary factor caused Calf B to fall ill.\n"
+        f"Do NOT define Etiology yet!"
     )
     st.session_state.chat_history.append({"role": "user", "text": init_prompt})
     
@@ -451,8 +442,8 @@ else:
                 st.rerun()
             else:
                 user_input = (
-                    f"I am ready. Begin Session {next_num} of 7 now. Address {st.session_state.student_name} warmly by name. "
-                    f"Start with a simple story/scenario and ask ONE question. Do NOT define terms in the opening message."
+                    f"I am ready. Begin Session {next_num} of 7 now. Keep response under 80 words. "
+                    f"Address {st.session_state.student_name} warmly. Present a 2-sentence scenario and end with a 3-option MCQ."
                 )
                 st.session_state.chat_history.append({"role": "user", "text": user_input})
 
