@@ -118,12 +118,6 @@ When a session's objectives are met:
 3. STOP GENERATING CONTENT IMMEDIATELY.
 """
 
-# Active Production Models Only
-MODELS_TO_TRY = [
-    "gemini-1.5-flash",
-    "gemini-1.5-pro"
-]
-
 # -----------------------------------------------------------------------------
 # 5. HELPER FUNCTIONS FOR API & BYSTANDER FALLBACK
 # -----------------------------------------------------------------------------
@@ -158,10 +152,38 @@ def get_all_keys():
 
     return list(set(keys))
 
-def _call_gemini_rest_api(key, contents):
-    """Direct REST API call using native urllib."""
-    formatted_contents = []
+def get_active_gemini_models(key):
+    """Dynamically queries Google's API for currently active models available to this API key."""
+    url = f"https://generativelanguage.googleapis.com/v1beta/models?key={key}"
+    req = urllib.request.Request(url, method="GET")
+    try:
+        with urllib.request.urlopen(req, timeout=5) as response:
+            if response.status == 200:
+                res_data = json.loads(response.read().decode("utf-8"))
+                models = res_data.get("models", [])
+                valid_models = []
+                for m in models:
+                    methods = m.get("supportedGenerationMethods", [])
+                    if "generateContent" in methods:
+                        # Strip 'models/' prefix if present
+                        m_name = m["name"].replace("models/", "")
+                        valid_models.append(m_name)
+                
+                # Prioritize Flash models first
+                flash_models = [m for m in valid_models if "flash" in m]
+                other_models = [m for m in valid_models if "flash" not in m]
+                return flash_models + other_models
+    except Exception:
+        pass
     
+    # Static fallback if discovery endpoint fails
+    return ["gemini-1.5-flash-002", "gemini-1.5-flash-latest", "gemini-1.5-pro-latest"]
+
+def _call_gemini_rest_api(key, contents):
+    """Direct REST API call using dynamically discovered models."""
+    models_to_try = get_active_gemini_models(key)
+    
+    formatted_contents = []
     for idx, msg in enumerate(contents):
         text_content = msg["parts"][0]
         if idx == 0:
@@ -182,7 +204,7 @@ def _call_gemini_rest_api(key, contents):
     payload_bytes = json.dumps(payload).encode("utf-8")
     last_err = ""
 
-    for model_name in MODELS_TO_TRY:
+    for model_name in models_to_try:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
         req = urllib.request.Request(
             url,
@@ -202,7 +224,7 @@ def _call_gemini_rest_api(key, contents):
                             return parts[0]["text"], None
         except urllib.error.HTTPError as e:
             err_detail = e.read().decode("utf-8")
-            last_err = f"HTTP {e.code} on {model_name}: {err_detail[:120]}"
+            last_err = f"HTTP {e.code} on {model_name}: {err_detail[:100]}"
             continue
         except Exception as e:
             last_err = f"Exception on {model_name}: {str(e)}"
