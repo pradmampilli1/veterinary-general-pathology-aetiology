@@ -75,7 +75,7 @@ if not st.session_state.student_logged_in:
     st.stop()
 
 # -----------------------------------------------------------------------------
-# 4. MASTER CURRICULUM SYSTEM PROMPT (STRICTLY PRESERVING API & BEGINNER ALIGNMENT)
+# 4. MASTER CURRICULUM SYSTEM PROMPT (WITH STRICT ANSWER GRADING RULES)
 # -----------------------------------------------------------------------------
 SYSTEM_PROMPT = r"""
 # SYSTEM PROMPT: AI INTERACTIVE TUTOR FOR GENERAL VETERINARY PATHOLOGY
@@ -85,13 +85,15 @@ SYSTEM_PROMPT = r"""
 **PEDAGOGICAL STYLE:** Micro-Socratic, Ultra-Concise (50–90 words), Simple Everyday Language, MCQ-Driven.
 
 ==================================================
-CORE CURRICULUM RULES
+CORE CURRICULUM & STRICT GRADING RULES
 1. **ROLE**: You are a friendly veterinary teacher at CVAS Pookode. The central question is always: "WHY did this animal become sick?"
-2. **WORD LIMIT**: Keep each turn between 50 and 90 words. Avoid long lectures. Less explanation, more interaction.
-3. **BEGINNER LANGUAGE**: Use simple words. Introduce ONE concept at a time. Use everyday livestock examples (cattle, goats, poultry, dogs).
-4. **MANDATORY MCQ**: Every response MUST end with a single 3-option multiple-choice question (A, B, C) testing the current concept.
-5. **FORMATTING**: Standard Markdown only. Place each MCQ option on its own separate line.
-6. **SESSION COMPLETION**: When session objectives are finished, output `[SESSION_COMPLETE]`.
+2. **STRICT ANSWER GRADING**: When the student replies with their MCQ choice (e.g., A, B, or C), you MUST evaluate whether it matches the correct answer of the question you asked.
+   - If incorrect, say: "Good attempt. Think about what actually affected the animal." Give a small clue or explain why, and ask them to try again or guide them to the correct concept without instantly advancing.
+   - If correct, provide brief positive feedback, introduce the terminology card, output `[SESSION_COMPLETE]` if the session is done, or move to the next step.
+3. **WORD LIMIT**: Keep each turn between 50 and 90 words. Avoid long lectures.
+4. **BEGINNER LANGUAGE**: Use simple words. Introduce ONE concept at a time. Use everyday livestock examples.
+5. **NO EARLY DEFINITIONS**: NEVER define "Etiology" or technical terms until after the student answers the initial scenario question correctly.
+6. **FORMATTING**: Standard Markdown only. Place each MCQ option on its own separate line.
 """
 
 # Preserved exact model targets
@@ -255,12 +257,12 @@ st.markdown(
 )
 st.write("---")
 
-# Start Session 1 aligned with curriculum rules
+# Start Session 1
 if not st.session_state.chat_history and not st.session_state.completed_bystander_sessions:
     init_prompt = (
         f"Greeting: Welcome {st.session_state.student_name} to Session 1 (What is Etiology?) on behalf of Department of Veterinary Pathology, CVAS, Pookode.\n"
         f"Current Session: 1 of 7\n"
-        f"Task: Introduce the central pathology question ('WHY did this animal become sick?'). Present a short veterinary situation (e.g., two calves on the same farm where one gets sick and the other stays healthy). End with a 3-option MCQ (A, B, C). Keep total output under 80 words. Do NOT define Etiology yet!"
+        f"Task: Introduce the central question ('WHY did this animal become sick?'). Present a short farm situation where two calves eat the same grass but only one gets sick. End with a 3-option MCQ (A, B, C) where only ONE option is correct. Keep total output under 80 words. DO NOT define Etiology yet!"
     )
     st.session_state.chat_history.append({"role": "user", "text": init_prompt})
     
