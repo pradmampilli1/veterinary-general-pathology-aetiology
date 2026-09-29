@@ -228,8 +228,13 @@ def generate_tutor_response(history_list):
     return None
 
 def render_custom_markdown(text):
-    """Cleans marker strings and renders Markdown."""
+    """Cleans marker strings and formats options onto separate lines."""
     clean_text = text.replace("[SESSION_COMPLETE]", "").strip()
+    
+    # Automatically force A), B), C) options onto new lines if the model clumps them
+    for opt in [" A)", " B)", " C)", " A.", " B.", " C."]:
+        clean_text = clean_text.replace(opt, f"\n\n{opt.strip()}")
+        
     st.markdown(clean_text)
 
 # -----------------------------------------------------------------------------
