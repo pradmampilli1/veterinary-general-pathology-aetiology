@@ -1,10 +1,9 @@
 import os
 import random
 import json
-import urllib.request
-import urllib.error
-import concurrent.futures
 import streamlit as st
+from google import genai
+from google.genai import types
 
 # -----------------------------------------------------------------------------
 # 1. STREAMLIT PAGE CONFIGURATION
@@ -74,58 +73,42 @@ if not st.session_state.student_logged_in:
     st.stop()
 
 # -----------------------------------------------------------------------------
-# 4. SYSTEM PROMPT DEFINITION
+# 4. PEDAGOGICAL SYSTEM PROMPT DEFINITION
 # -----------------------------------------------------------------------------
 SYSTEM_PROMPT = r"""
 # SYSTEM PROMPT: AI INTERACTIVE TUTOR FOR GENERAL VETERINARY PATHOLOGY
 
 **MODULE:** ETIOLOGY AND CLASSIFICATION OF DISEASE  
 **TARGET AUDIENCE:** BVSc & AH Students (Total Beginners)  
-**PEDAGOGICAL STYLE:** Interactive, Socratic, Short (60–150 words/turn), MCQ & Case-Guided.
+**PEDAGOGICAL STYLE:** Micro-Socratic, Ultra-Concise (50–90 words), MCQ-Driven.
 
 ==================================================
-STUDENT PROFILE & CORE OBJECTIVE
-* Complete beginners in pathology. Use simple everyday language first, then introduce terms.
-* Teach ONLY: Etiology, Causes of disease, Classification of causes.
-* DO NOT teach: Pathogenesis, cell injury, lesions, histopathology, diagnosis, or treatment.
-* Central Student Question: "WHY did this animal become sick?"
+STRICT PEDAGOGICAL RULES
+1. **WORD LIMIT**: Your response MUST be between 50 and 90 words total. No meta-commentary or introductory filler.
+2. **MANDATORY MCQ**: Every response MUST end with a single 3-option multiple-choice question (A, B, C). NEVER ask broad open-ended questions like "What do you think?" or "Why do we classify this?".
+3. **NO EARLY DEFINITIONS**: Do NOT define "Etiology" or technical terms until after the student answers the scenario question.
+4. **FORMATTING**: Standard Markdown only. Place each MCQ option on its own line.
 
 ==================================================
-STRICT SOCRATIC OPENING RULE (NO EARLY DEFINITIONS)
-When starting a session:
-1. Address the student respectfully and warmly by name only (e.g., "Welcome, [Name]!").
-2. Begin with a short domestic animal situation.
-3. Ask ONE simple question or MCQ to make the student think.
-4. NEVER introduce technical terms (like "Etiology" or "Predisposition") in your first message. Introduce terms ONLY AFTER the student answers!
-
-==================================================
-TEACHING STYLE & FORMAT
-* Use 60–150 words per turn. Do not overwrite.
-* Format MCQs on separate lines (A) ..., B) ..., C) ...). NEVER use raw HTML tags like `<br>`.
-* Never say "Wrong." Use "Good attempt..." + 1 clue.
-
-==================================================
-TECHNICAL TERMINOLOGY FORMAT
-📌 **TERM:** [Technical Term]  
-• **Simple meaning:** [Simple explanation]  
-• **Veterinary example:** [Clear animal situation]
+TERMINOLOGY CARD FORMAT (WHEN INTRODUCING A TERM)
+📌 **TERM:** [Term]  
+• **Definition:** [1 concise sentence]  
+• **Veterinary Example:** [1 short clinical example]
 
 ==================================================
 SESSION ENDING
-When a session's objectives are met:
-1. Give a brief recap.
-2. Output: [SESSION_COMPLETE]
-3. STOP GENERATING CONTENT IMMEDIATELY.
+When session objectives are complete, output:
+[SESSION_COMPLETE]
 """
 
-# Reliable standard models (Removed broken 2.5 variants)
+# Standard active models recognized by the official SDK
 MODELS_TO_TRY = [
     "gemini-1.5-flash",
     "gemini-1.5-pro"
 ]
 
 # -----------------------------------------------------------------------------
-# 5. HELPER FUNCTIONS FOR API & BYSTANDER FALLBACK
+# 5. HELPER FUNCTIONS FOR OFFICIAL GENAI SDK & BYSTANDER FALLBACK
 # -----------------------------------------------------------------------------
 
 def load_backup_curriculum():
@@ -158,90 +141,50 @@ def get_all_keys():
 
     return list(set(keys))
 
-def _call_gemini_rest_api(key, contents):
-    """Executes REST API requests over reliable endpoints (v1beta & v1 dual-routing)."""
-    formatted_contents = []
-    for idx, msg in enumerate(contents):
-        text_content = msg["parts"][0]
-        if idx == 0:
-            text_content = f"{SYSTEM_PROMPT}\n\n[STUDENT CONVERSATION START]\n{text_content}"
-            
-        formatted_contents.append({
-            "role": msg["role"],
-            "parts": [{"text": text_content}]
-        })
-
-    payload = {
-        "contents": formatted_contents,
-        "generationConfig": {
-            "maxOutputTokens": 300  # Hard mechanical limit to enforce brevity
-        }
-    }
-
-    payload_bytes = json.dumps(payload).encode("utf-8")
-    last_err = ""
-
-    for model_name in MODELS_TO_TRY:
-        # Try both API routes to guarantee connection
-        for ver in ["v1beta", "v1"]:
-            url = f"https://generativelanguage.googleapis.com/{ver}/models/{model_name}:generateContent?key={key}"
-            req = urllib.request.Request(
-                url,
-                data=payload_bytes,
-                headers={"Content-Type": "application/json"},
-                method="POST"
-            )
-
-            try:
-                with urllib.request.urlopen(req, timeout=8) as response:
-                    if response.status == 200:
-                        res_body = json.loads(response.read().decode("utf-8"))
-                        candidates = res_body.get("candidates", [])
-                        if candidates:
-                            parts = candidates[0].get("content", {}).get("parts", [])
-                            if parts and "text" in parts[0]:
-                                return parts[0]["text"], None
-            except urllib.error.HTTPError as e:
-                err_detail = e.read().decode("utf-8")
-                last_err = f"HTTP {e.code} on {model_name} ({ver}): {err_detail[:100]}"
-                continue
-            except Exception as e:
-                last_err = f"Exception on {model_name} ({ver}): {str(e)}"
-                continue
-
-    return None, f"REST Error: {last_err}"
-
 def generate_tutor_response(history_list):
-    """Generates response using live REST API with thread-safe execution."""
+    """Generates response using official google-genai SDK."""
     keys = get_all_keys()
     if not keys:
         st.session_state.bystander_reason = "No API Key found in Streamlit Secrets"
         return None
 
     random.shuffle(keys)
-    contents = []
+
+    # Convert conversation history to google-genai Content structures
+    formatted_contents = []
     for msg in history_list:
         role = "user" if msg["role"] == "user" else "model"
-        contents.append({
-            "role": role,
-            "parts": [msg["text"]]
-        })
+        formatted_contents.append(
+            types.Content(
+                role=role,
+                parts=[types.Part.from_text(text=msg["text"])]
+            )
+        )
 
     for key in keys:
         try:
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                future = executor.submit(_call_gemini_rest_api, key, contents)
-                result, err_msg = future.result(timeout=12)
-                if result:
-                    return result
-                elif err_msg:
-                    st.session_state.bystander_reason = err_msg
+            client = genai.Client(api_key=key)
+            for model_name in MODELS_TO_TRY:
+                try:
+                    response = client.models.generate_content(
+                        model=model_name,
+                        contents=formatted_contents,
+                        config=types.GenerateContentConfig(
+                            system_instruction=SYSTEM_PROMPT,
+                            max_output_tokens=350,
+                        ),
+                    )
+                    if response and response.text:
+                        return response.text
+                except Exception as e:
+                    st.session_state.bystander_reason = f"{model_name} error: {str(e)[:100]}"
+                    continue
         except Exception as e:
-            st.session_state.bystander_reason = f"Timeout or Connection Error: {str(e)}"
+            st.session_state.bystander_reason = f"Client Error: {str(e)[:100]}"
             continue
 
     if not st.session_state.bystander_reason:
-        st.session_state.bystander_reason = "All Gemini model REST calls failed"
+        st.session_state.bystander_reason = "All Gemini API calls failed"
     return None
 
 def render_custom_markdown(text):
@@ -283,10 +226,9 @@ st.write("---")
 # Start initial lesson ONLY AFTER successful login
 if not st.session_state.chat_history and not st.session_state.completed_bystander_sessions:
     init_prompt = (
-        f"Begin Session 1 of 7 now. Perform BOTH of these steps in your response:\n"
-        f"1. Greet the student: 'Welcome, {st.session_state.student_name}! Department of Veterinary Pathology, CVAS, Pookode welcomes you to Session 1.'\n"
-        f"2. Present a short scenario about two calves at CVAS Pookode where one becomes sick and one stays healthy, and ask ONE simple multiple-choice question (MCQ) to make the student think about why.\n"
-        f"Do NOT stop after the greeting alone. Do NOT introduce technical terms like 'Etiology' yet."
+        f"Greeting: Welcome {st.session_state.student_name} to Session 1 on behalf of Department of Veterinary Pathology, CVAS, Pookode.\n"
+        f"Scenario: At CVAS Pookode, two calves are housed together under identical management. After a sudden cold draft, Calf B develops severe coughing and fever, while Calf A remains active.\n"
+        f"Task: Write a single response combining the greeting, the 2-sentence calf scenario, and a 3-option MCQ (A, B, C) asking what primary factor caused Calf B to fall ill. Keep total output under 80 words. Do NOT define Etiology yet!"
     )
     st.session_state.chat_history.append({"role": "user", "text": init_prompt})
     
@@ -405,7 +347,7 @@ if st.session_state.bystander_mode:
 # -----------------------------------------------------------------------------
 else:
     for idx, msg in enumerate(st.session_state.chat_history):
-        if idx == 0 and "Begin Session 1 of 7 now" in msg["text"]:
+        if idx == 0 and "Greeting: Welcome" in msg["text"]:
             continue
         if msg["role"] == "user" and msg["text"].startswith("I am ready. Continue to Session"):
             continue
@@ -433,8 +375,8 @@ else:
                 st.rerun()
             else:
                 user_input = (
-                    f"I am ready. Begin Session {next_num} of 7 now. Address {st.session_state.student_name} warmly by name. "
-                    f"Start with a simple story/scenario and ask ONE question. Do NOT define terms in the opening message."
+                    f"I am ready. Begin Session {next_num} of 7 now. Address {st.session_state.student_name} warmly. "
+                    f"Present a 2-sentence scenario and end with a 3-option MCQ. Keep total output under 80 words."
                 )
                 st.session_state.chat_history.append({"role": "user", "text": user_input})
 
