@@ -118,6 +118,13 @@ When a session's objectives are met:
 3. STOP GENERATING CONTENT IMMEDIATELY.
 """
 
+# Active production models to try directly without discovery overhead
+MODELS_TO_TRY = [
+    "gemini-2.5-flash",
+    "gemini-1.5-flash",
+    "gemini-1.5-pro"
+]
+
 # -----------------------------------------------------------------------------
 # 5. HELPER FUNCTIONS FOR API & BYSTANDER FALLBACK
 # -----------------------------------------------------------------------------
@@ -152,35 +159,10 @@ def get_all_keys():
 
     return list(set(keys))
 
-def get_active_gemini_models(key):
-    """Dynamically queries Google's API for currently active models available to this API key."""
-    url = f"https://generativelanguage.googleapis.com/v1beta/models?key={key}"
-    req = urllib.request.Request(url, method="GET")
-    try:
-        with urllib.request.urlopen(req, timeout=5) as response:
-            if response.status == 200:
-                res_data = json.loads(response.read().decode("utf-8"))
-                models = res_data.get("models", [])
-                valid_models = []
-                for m in models:
-                    methods = m.get("supportedGenerationMethods", [])
-                    if "generateContent" in methods:
-                        m_name = m["name"].replace("models/", "")
-                        valid_models.append(m_name)
-                
-                flash_models = [m for m in valid_models if "flash" in m]
-                other_models = [m for m in valid_models if "flash" not in m]
-                return flash_models + other_models
-    except Exception:
-        pass
-    
-    return ["gemini-1.5-flash-002", "gemini-1.5-flash-latest", "gemini-1.5-pro-latest"]
-
 def _call_gemini_rest_api(key, contents):
-    """Direct REST API call using dynamically discovered models."""
-    models_to_try = get_active_gemini_models(key)
-    
+    """Direct REST API call using native urllib."""
     formatted_contents = []
+    
     for idx, msg in enumerate(contents):
         text_content = msg["parts"][0]
         if idx == 0:
@@ -201,7 +183,7 @@ def _call_gemini_rest_api(key, contents):
     payload_bytes = json.dumps(payload).encode("utf-8")
     last_err = ""
 
-    for model_name in models_to_try:
+    for model_name in MODELS_TO_TRY:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
         req = urllib.request.Request(
             url,
@@ -211,7 +193,7 @@ def _call_gemini_rest_api(key, contents):
         )
 
         try:
-            with urllib.request.urlopen(req, timeout=10) as response:
+            with urllib.request.urlopen(req, timeout=12) as response:
                 if response.status == 200:
                     res_body = json.loads(response.read().decode("utf-8"))
                     candidates = res_body.get("candidates", [])
@@ -230,7 +212,7 @@ def _call_gemini_rest_api(key, contents):
     return None, f"REST Error: {last_err}"
 
 def generate_tutor_response(history_list):
-    """Generates response using live REST API with a 10-second timeout."""
+    """Generates response using live REST API with an extended 15-second timeout."""
     keys = get_all_keys()
     if not keys:
         st.session_state.bystander_reason = "No API Key found in Streamlit Secrets"
@@ -249,7 +231,7 @@ def generate_tutor_response(history_list):
         try:
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 future = executor.submit(_call_gemini_rest_api, key, contents)
-                result, err_msg = future.result(timeout=10)
+                result, err_msg = future.result(timeout=15)
                 if result:
                     return result
                 elif err_msg:
