@@ -85,7 +85,7 @@ SYSTEM_PROMPT = r"""
 
 ==================================================
 STRICT PEDAGOGICAL RULES
-1. **WORD LIMIT**: Your response MUST be between 50 and 90 words total. No meta-commentary or filler.
+1. **WORD LIMIT**: Your response MUST be between 50 and 90 words total. No filler or meta-commentary.
 2. **MANDATORY MCQ**: Every response MUST end with a single 3-option multiple-choice question (A, B, C). NEVER ask broad open-ended questions.
 3. **NO EARLY DEFINITIONS**: Do NOT define "Etiology" or technical terms until after the student answers the scenario question.
 4. **FORMATTING**: Standard Markdown only. Place each MCQ option on its own line.
@@ -102,11 +102,10 @@ When session objectives are complete, output:
 [SESSION_COMPLETE]
 """
 
-# Active production endpoint targets
+# Locked to verified Gemini 3 series flash-lite endpoint
 MODELS_TO_TRY = [
-    "gemini-3.8-flash",
-    "gemini-3.5-flash-lite",
-    "gemini-1.5-flash"
+    "gemini-3.1-flash-lite",
+    "gemini-3.5-flash-lite"
 ]
 
 # -----------------------------------------------------------------------------
@@ -144,7 +143,7 @@ def get_all_keys():
     return list(set(keys))
 
 def _call_gemini_rest_api(key, contents):
-    """Executes REST API requests using standard urllib over current production endpoints."""
+    """Executes REST API requests using standard urllib over gemini-3.1-flash-lite."""
     formatted_contents = []
     for idx, msg in enumerate(contents):
         text_content = msg["parts"][0]
@@ -159,7 +158,7 @@ def _call_gemini_rest_api(key, contents):
     payload = {
         "contents": formatted_contents,
         "generationConfig": {
-            "maxOutputTokens": 800  # Increased token limit to prevent mid-sentence truncation
+            "maxOutputTokens": 600
         }
     }
 
@@ -177,7 +176,7 @@ def _call_gemini_rest_api(key, contents):
             )
 
             try:
-                with urllib.request.urlopen(req, timeout=10) as response:
+                with urllib.request.urlopen(req, timeout=12) as response:
                     if response.status == 200:
                         res_body = json.loads(response.read().decode("utf-8"))
                         candidates = res_body.get("candidates", [])
@@ -215,7 +214,7 @@ def generate_tutor_response(history_list):
         try:
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 future = executor.submit(_call_gemini_rest_api, key, contents)
-                result, err_msg = future.result(timeout=12)
+                result, err_msg = future.result(timeout=14)
                 if result:
                     return result
                 elif err_msg:
