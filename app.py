@@ -118,11 +118,10 @@ When a session's objectives are met:
 3. STOP GENERATING CONTENT IMMEDIATELY.
 """
 
-# Valid production model identifiers
+# Active Production Models Only
 MODELS_TO_TRY = [
     "gemini-1.5-flash",
-    "gemini-1.5-pro",
-    "gemini-2.5-flash"
+    "gemini-1.5-pro"
 ]
 
 # -----------------------------------------------------------------------------
@@ -160,10 +159,9 @@ def get_all_keys():
     return list(set(keys))
 
 def _call_gemini_rest_api(key, contents):
-    """Direct REST API call using native urllib with guaranteed REST compatibility."""
+    """Direct REST API call using native urllib."""
     formatted_contents = []
     
-    # Prepend system prompt to the first user message for 100% REST endpoint compatibility
     for idx, msg in enumerate(contents):
         text_content = msg["parts"][0]
         if idx == 0:
@@ -185,8 +183,7 @@ def _call_gemini_rest_api(key, contents):
     last_err = ""
 
     for model_name in MODELS_TO_TRY:
-        # Use stable v1 REST route
-        url = f"https://generativelanguage.googleapis.com/v1/models/{model_name}:generateContent?key={key}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
         req = urllib.request.Request(
             url,
             data=payload_bytes,
