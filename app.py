@@ -102,11 +102,11 @@ When session objectives are complete, output:
 [SESSION_COMPLETE]
 """
 
-# Explicit active production model endpoints
+# Standard production endpoint strings
 MODELS_TO_TRY = [
-    "gemini-2.5-flash",
-    "gemini-1.5-flash-latest",
-    "gemini-1.5-pro-latest"
+    "gemini-1.5-flash",
+    "gemini-2.0-flash",
+    "gemini-2.5-flash"
 ]
 
 # -----------------------------------------------------------------------------
@@ -144,7 +144,7 @@ def get_all_keys():
     return list(set(keys))
 
 def _call_gemini_rest_api(key, contents):
-    """Executes REST API requests using native urllib with verified path formatting."""
+    """Executes REST API requests over standard endpoints with dual v1beta/v1 path resolution."""
     formatted_contents = []
     for idx, msg in enumerate(contents):
         text_content = msg["parts"][0]
@@ -167,38 +167,38 @@ def _call_gemini_rest_api(key, contents):
     last_err = ""
 
     for model_name in MODELS_TO_TRY:
-        # Format model path cleanly for REST v1beta routing
-        model_path = model_name if model_name.startswith("models/") else f"models/{model_name}"
-        url = f"https://generativelanguage.googleapis.com/v1beta/{model_path}:generateContent?key={key}"
-        
-        req = urllib.request.Request(
-            url,
-            data=payload_bytes,
-            headers={"Content-Type": "application/json"},
-            method="POST"
-        )
+        # Try v1beta first, then fallback to v1
+        api_versions = ["v1beta", "v1"]
+        for ver in api_versions:
+            url = f"https://generativelanguage.googleapis.com/{ver}/models/{model_name}:generateContent?key={key}"
+            req = urllib.request.Request(
+                url,
+                data=payload_bytes,
+                headers={"Content-Type": "application/json"},
+                method="POST"
+            )
 
-        try:
-            with urllib.request.urlopen(req, timeout=12) as response:
-                if response.status == 200:
-                    res_body = json.loads(response.read().decode("utf-8"))
-                    candidates = res_body.get("candidates", [])
-                    if candidates:
-                        parts = candidates[0].get("content", {}).get("parts", [])
-                        if parts and "text" in parts[0]:
-                            return parts[0]["text"], None
-        except urllib.error.HTTPError as e:
-            err_detail = e.read().decode("utf-8")
-            last_err = f"HTTP {e.code} on {model_name}: {err_detail[:100]}"
-            continue
-        except Exception as e:
-            last_err = f"Exception on {model_name}: {str(e)}"
-            continue
+            try:
+                with urllib.request.urlopen(req, timeout=10) as response:
+                    if response.status == 200:
+                        res_body = json.loads(response.read().decode("utf-8"))
+                        candidates = res_body.get("candidates", [])
+                        if candidates:
+                            parts = candidates[0].get("content", {}).get("parts", [])
+                            if parts and "text" in parts[0]:
+                                return parts[0]["text"], None
+            except urllib.error.HTTPError as e:
+                err_detail = e.read().decode("utf-8")
+                last_err = f"HTTP {e.code} on {model_name} ({ver}): {err_detail[:100]}"
+                continue
+            except Exception as e:
+                last_err = f"Exception on {model_name} ({ver}): {str(e)}"
+                continue
 
     return None, f"REST Error: {last_err}"
 
 def generate_tutor_response(history_list):
-    """Generates response using live REST API with thread-safe timeout handling."""
+    """Generates response using live REST API with thread-safe execution."""
     keys = get_all_keys()
     if not keys:
         st.session_state.bystander_reason = "No API Key found in Streamlit Secrets"
