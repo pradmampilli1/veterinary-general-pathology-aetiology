@@ -85,10 +85,10 @@ SYSTEM_PROMPT = r"""
 
 ==================================================
 STRICT PEDAGOGICAL RULES
-1. **WORD LIMIT**: Your response MUST be between 50 and 90 words total. Absolutely no long filler or meta-commentary.
-2. **MANDATORY MCQ**: Every turn MUST end with a single 3-option multiple-choice question (A, B, C). NEVER ask open-ended questions like "What do you think?".
-3. **NO EARLY DEFINITIONS**: Do NOT define "Etiology" or technical terms in your opening turn. Introduce definitions ONLY AFTER the student responds to the scenario.
-4. **FORMATTING**: Standard Markdown only. Put each MCQ choice on a clean new line.
+1. **WORD LIMIT**: Your response MUST be between 50 and 90 words total. No meta-commentary or filler.
+2. **MANDATORY MCQ**: Every response MUST end with a single 3-option multiple-choice question (A, B, C). NEVER ask broad open-ended questions.
+3. **NO EARLY DEFINITIONS**: Do NOT define "Etiology" or technical terms until after the student answers the scenario question.
+4. **FORMATTING**: Standard Markdown only. Place each MCQ option on its own line.
 
 ==================================================
 TERMINOLOGY CARD FORMAT (WHEN INTRODUCING A TERM)
@@ -102,8 +102,10 @@ When session objectives are complete, output:
 [SESSION_COMPLETE]
 """
 
-# Guaranteed active endpoint single target
+# Current production-stable model identifiers
 MODELS_TO_TRY = [
+    "gemini-3.8-flash",
+    "gemini-3.5-flash-lite",
     "gemini-1.5-flash"
 ]
 
@@ -142,7 +144,7 @@ def get_all_keys():
     return list(set(keys))
 
 def _call_gemini_rest_api(key, contents):
-    """Direct REST call to stable v1beta gemini-1.5-flash endpoint."""
+    """Executes REST API requests using standard urllib over current production endpoints."""
     formatted_contents = []
     for idx, msg in enumerate(contents):
         text_content = msg["parts"][0]
@@ -157,7 +159,7 @@ def _call_gemini_rest_api(key, contents):
     payload = {
         "contents": formatted_contents,
         "generationConfig": {
-            "maxOutputTokens": 250  # Enforces physical brevity
+            "maxOutputTokens": 300
         }
     }
 
@@ -165,30 +167,31 @@ def _call_gemini_rest_api(key, contents):
     last_err = ""
 
     for model_name in MODELS_TO_TRY:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
-        req = urllib.request.Request(
-            url,
-            data=payload_bytes,
-            headers={"Content-Type": "application/json"},
-            method="POST"
-        )
+        for ver in ["v1beta", "v1"]:
+            url = f"https://generativelanguage.googleapis.com/{ver}/models/{model_name}:generateContent?key={key}"
+            req = urllib.request.Request(
+                url,
+                data=payload_bytes,
+                headers={"Content-Type": "application/json"},
+                method="POST"
+            )
 
-        try:
-            with urllib.request.urlopen(req, timeout=12) as response:
-                if response.status == 200:
-                    res_body = json.loads(response.read().decode("utf-8"))
-                    candidates = res_body.get("candidates", [])
-                    if candidates:
-                        parts = candidates[0].get("content", {}).get("parts", [])
-                        if parts and "text" in parts[0]:
-                            return parts[0]["text"], None
-        except urllib.error.HTTPError as e:
-            err_detail = e.read().decode("utf-8")
-            last_err = f"HTTP {e.code} on {model_name}: {err_detail[:100]}"
-            continue
-        except Exception as e:
-            last_err = f"Exception on {model_name}: {str(e)}"
-            continue
+            try:
+                with urllib.request.urlopen(req, timeout=10) as response:
+                    if response.status == 200:
+                        res_body = json.loads(response.read().decode("utf-8"))
+                        candidates = res_body.get("candidates", [])
+                        if candidates:
+                            parts = candidates[0].get("content", {}).get("parts", [])
+                            if parts and "text" in parts[0]:
+                                return parts[0]["text"], None
+            except urllib.error.HTTPError as e:
+                err_detail = e.read().decode("utf-8")
+                last_err = f"HTTP {e.code} on {model_name} ({ver}): {err_detail[:100]}"
+                continue
+            except Exception as e:
+                last_err = f"Exception on {model_name} ({ver}): {str(e)}"
+                continue
 
     return None, f"REST Error: {last_err}"
 
@@ -212,7 +215,7 @@ def generate_tutor_response(history_list):
         try:
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 future = executor.submit(_call_gemini_rest_api, key, contents)
-                result, err_msg = future.result(timeout=14)
+                result, err_msg = future.result(timeout=12)
                 if result:
                     return result
                 elif err_msg:
@@ -266,7 +269,7 @@ if not st.session_state.chat_history and not st.session_state.completed_bystande
     init_prompt = (
         f"Greeting: Welcome {st.session_state.student_name} to Session 1 on behalf of Department of Veterinary Pathology, CVAS, Pookode.\n"
         f"Scenario: At CVAS Pookode, two calves are housed together under identical management. After a sudden cold draft, Calf B develops severe coughing and fever, while Calf A remains active.\n"
-        f"Task: Write ONE single response containing BOTH the greeting and the 2-sentence calf scenario, followed immediately by a 3-option MCQ (A, B, C) asking why Calf B became sick. Do NOT define Etiology yet!"
+        f"Task: Write a single response combining the greeting, the 2-sentence calf scenario, and a 3-option MCQ (A, B, C) asking what primary factor caused Calf B to fall ill. Keep total output under 80 words. Do NOT define Etiology yet!"
     )
     st.session_state.chat_history.append({"role": "user", "text": init_prompt})
     
@@ -414,7 +417,7 @@ else:
             else:
                 user_input = (
                     f"I am ready. Begin Session {next_num} of 7 now. Address {st.session_state.student_name} warmly. "
-                    f"Present a short 2-sentence scenario and end with a 3-option MCQ. Keep total output under 80 words."
+                    f"Present a 2-sentence scenario and end with a 3-option MCQ. Keep total output under 80 words."
                 )
                 st.session_state.chat_history.append({"role": "user", "text": user_input})
 
