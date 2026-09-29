@@ -118,13 +118,6 @@ When a session's objectives are met:
 3. STOP GENERATING CONTENT IMMEDIATELY.
 """
 
-# Active production models to try directly without discovery overhead
-MODELS_TO_TRY = [
-    "gemini-2.5-flash",
-    "gemini-1.5-flash",
-    "gemini-1.5-pro"
-]
-
 # -----------------------------------------------------------------------------
 # 5. HELPER FUNCTIONS FOR API & BYSTANDER FALLBACK
 # -----------------------------------------------------------------------------
@@ -159,10 +152,35 @@ def get_all_keys():
 
     return list(set(keys))
 
-def _call_gemini_rest_api(key, contents):
-    """Direct REST API call using native urllib."""
-    formatted_contents = []
+def get_active_gemini_models(key):
+    """Queries Google API to discover active models for this specific API key."""
+    url = f"https://generativelanguage.googleapis.com/v1beta/models?key={key}"
+    req = urllib.request.Request(url, method="GET")
+    try:
+        with urllib.request.urlopen(req, timeout=4) as response:
+            if response.status == 200:
+                res_data = json.loads(response.read().decode("utf-8"))
+                models = res_data.get("models", [])
+                valid_models = []
+                for m in models:
+                    methods = m.get("supportedGenerationMethods", [])
+                    if "generateContent" in methods:
+                        m_name = m["name"].replace("models/", "")
+                        valid_models.append(m_name)
+                
+                flash_models = [m for m in valid_models if "flash" in m]
+                other_models = [m for m in valid_models if "flash" not in m]
+                return flash_models + other_models
+    except Exception:
+        pass
     
+    return ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.5-pro"]
+
+def _call_gemini_rest_api(key, contents):
+    """Executes REST API requests over dynamically identified endpoints."""
+    models_to_try = get_active_gemini_models(key)
+    
+    formatted_contents = []
     for idx, msg in enumerate(contents):
         text_content = msg["parts"][0]
         if idx == 0:
@@ -183,7 +201,7 @@ def _call_gemini_rest_api(key, contents):
     payload_bytes = json.dumps(payload).encode("utf-8")
     last_err = ""
 
-    for model_name in MODELS_TO_TRY:
+    for model_name in models_to_try:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
         req = urllib.request.Request(
             url,
@@ -193,7 +211,7 @@ def _call_gemini_rest_api(key, contents):
         )
 
         try:
-            with urllib.request.urlopen(req, timeout=12) as response:
+            with urllib.request.urlopen(req, timeout=8) as response:
                 if response.status == 200:
                     res_body = json.loads(response.read().decode("utf-8"))
                     candidates = res_body.get("candidates", [])
@@ -212,7 +230,7 @@ def _call_gemini_rest_api(key, contents):
     return None, f"REST Error: {last_err}"
 
 def generate_tutor_response(history_list):
-    """Generates response using live REST API with an extended 15-second timeout."""
+    """Generates response using live REST API with dynamic model targeting."""
     keys = get_all_keys()
     if not keys:
         st.session_state.bystander_reason = "No API Key found in Streamlit Secrets"
@@ -231,7 +249,7 @@ def generate_tutor_response(history_list):
         try:
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 future = executor.submit(_call_gemini_rest_api, key, contents)
-                result, err_msg = future.result(timeout=15)
+                result, err_msg = future.result(timeout=12)
                 if result:
                     return result
                 elif err_msg:
@@ -283,9 +301,9 @@ st.write("---")
 # Start initial lesson ONLY AFTER successful login
 if not st.session_state.chat_history and not st.session_state.completed_bystander_sessions:
     init_prompt = (
-        f"Begin Session 1 of 7 now. In your very first response, perform BOTH of these steps in one single turn:\n"
+        f"Begin Session 1 of 7 now. Perform BOTH of these steps in your response:\n"
         f"1. Greet the student: 'Welcome, {st.session_state.student_name}! Department of Veterinary Pathology, CVAS, Pookode welcomes you to Session 1.'\n"
-        f"2. Immediately present a short scenario about two calves at CVAS Pookode where one becomes sick and one stays healthy, and ask ONE simple multiple-choice question (MCQ) to make the student think about why.\n"
+        f"2. Present a short scenario about two calves at CVAS Pookode where one becomes sick and one stays healthy, and ask ONE simple multiple-choice question (MCQ) to make the student think about why.\n"
         f"Do NOT stop after the greeting alone. Do NOT introduce technical terms like 'Etiology' yet."
     )
     st.session_state.chat_history.append({"role": "user", "text": init_prompt})
