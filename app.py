@@ -74,7 +74,7 @@ if not st.session_state.student_logged_in:
     st.stop()
 
 # -----------------------------------------------------------------------------
-# 4. ENFORCED PEDAGOGICAL SYSTEM PROMPT DEFINITION
+# 4. PEDAGOGICAL SYSTEM PROMPT DEFINITION
 # -----------------------------------------------------------------------------
 SYSTEM_PROMPT = r"""
 # SYSTEM PROMPT: AI INTERACTIVE TUTOR FOR GENERAL VETERINARY PATHOLOGY
@@ -84,32 +84,33 @@ SYSTEM_PROMPT = r"""
 **PEDAGOGICAL STYLE:** Micro-Socratic, Ultra-Concise (50–90 words), MCQ-Driven.
 
 ==================================================
-CORE PEDAGOGICAL RULES (STRICT COMPLIANCE)
-1. **MAX LENGTH**: Keep every response strictly between 50 and 90 words. No introductory filler!
-2. **ALWAYS END WITH A SPECIFIC MCQ**: Every message (except session completion) MUST end with a clear 3-option MCQ (A, B, C). NEVER ask broad open-ended questions like "What do you think?" or "Why do we classify this?".
-3. **SCOPE**: Teach ONLY Etiology and Causes of Disease. DO NOT teach pathogenesis, lesions, or treatment.
-4. **NO RAW HTML**: Format MCQs cleanly on standard Markdown lines.
+STRICT PEDAGOGICAL RULES
+1. **WORD LIMIT**: Your response MUST be between 50 and 90 words total. No fluff or repetitive meta-language.
+2. **MANDATORY MCQ**: Every turn MUST end with a single 3-option multiple-choice question (A, B, C). NEVER ask broad open-ended questions like "What do you think?" or "Why do we classify this?".
+3. **NO EARLY DEFINITIONS**: Do NOT define "Etiology" or technical terms until after the student answers the scenario question.
+4. **FORMATTING**: Use standard Markdown only. Place each MCQ option on a new line.
 
 ==================================================
-OPENING RULE (SESSION 1 FIRST TURN)
-* Greet briefly: "Welcome, [Name]! Department of Veterinary Pathology, CVAS, Pookode welcomes you to Session 1."
-* Present a 2-sentence calf scenario at CVAS Pookode.
-* End with ONE simple 3-option MCQ asking why one calf became sick.
-
-==================================================
-TERMINOLOGY FORMAT (WHEN INTRODUCING A TERM)
+TERMINOLOGY CARD FORMAT (WHEN INTRODUCING A TERM)
 📌 **TERM:** [Term]  
-• **Definition:** [1 simple sentence]  
+• **Definition:** [1 concise sentence]  
 • **Veterinary Example:** [1 short clinical example]
 
 ==================================================
 SESSION ENDING
-When 2-3 concept turns finish:
-Output: [SESSION_COMPLETE]
+When session goals are complete, end with:
+[SESSION_COMPLETE]
 """
 
+# Priority fallback list of production models
+MODELS_TO_TRY = [
+    "gemini-2.5-flash",
+    "gemini-1.5-flash",
+    "gemini-1.5-pro"
+]
+
 # -----------------------------------------------------------------------------
-# 5. HELPER FUNCTIONS FOR API & BYSTANDER FALLBACK
+# 5. HELPER FUNCTIONS FOR REST API & BYSTANDER FALLBACK
 # -----------------------------------------------------------------------------
 
 def load_backup_curriculum():
@@ -142,34 +143,8 @@ def get_all_keys():
 
     return list(set(keys))
 
-def get_active_gemini_models(key):
-    """Queries Google API to discover active models for this specific API key."""
-    url = f"https://generativelanguage.googleapis.com/v1beta/models?key={key}"
-    req = urllib.request.Request(url, method="GET")
-    try:
-        with urllib.request.urlopen(req, timeout=4) as response:
-            if response.status == 200:
-                res_data = json.loads(response.read().decode("utf-8"))
-                models = res_data.get("models", [])
-                valid_models = []
-                for m in models:
-                    methods = m.get("supportedGenerationMethods", [])
-                    if "generateContent" in methods:
-                        m_name = m["name"].replace("models/", "")
-                        valid_models.append(m_name)
-                
-                flash_models = [m for m in valid_models if "flash" in m]
-                other_models = [m for m in valid_models if "flash" not in m]
-                return flash_models + other_models
-    except Exception:
-        pass
-    
-    return ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.5-pro"]
-
 def _call_gemini_rest_api(key, contents):
-    """Executes REST API requests over dynamically identified endpoints."""
-    models_to_try = get_active_gemini_models(key)
-    
+    """Executes REST API requests using standard urllib without external SDK dependencies."""
     formatted_contents = []
     for idx, msg in enumerate(contents):
         text_content = msg["parts"][0]
@@ -184,14 +159,14 @@ def _call_gemini_rest_api(key, contents):
     payload = {
         "contents": formatted_contents,
         "generationConfig": {
-            "maxOutputTokens": 300  # Enforces short, focused Socratic responses
+            "maxOutputTokens": 600
         }
     }
 
     payload_bytes = json.dumps(payload).encode("utf-8")
     last_err = ""
 
-    for model_name in models_to_try:
+    for model_name in MODELS_TO_TRY:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
         req = urllib.request.Request(
             url,
@@ -201,7 +176,7 @@ def _call_gemini_rest_api(key, contents):
         )
 
         try:
-            with urllib.request.urlopen(req, timeout=8) as response:
+            with urllib.request.urlopen(req, timeout=12) as response:
                 if response.status == 200:
                     res_body = json.loads(response.read().decode("utf-8"))
                     candidates = res_body.get("candidates", [])
@@ -220,7 +195,7 @@ def _call_gemini_rest_api(key, contents):
     return None, f"REST Error: {last_err}"
 
 def generate_tutor_response(history_list):
-    """Generates response using live REST API with dynamic model targeting."""
+    """Generates response using live REST API with an extended timeout."""
     keys = get_all_keys()
     if not keys:
         st.session_state.bystander_reason = "No API Key found in Streamlit Secrets"
@@ -291,11 +266,9 @@ st.write("---")
 # Start initial lesson ONLY AFTER successful login
 if not st.session_state.chat_history and not st.session_state.completed_bystander_sessions:
     init_prompt = (
-        f"Begin Session 1 of 7 now. In one ultra-concise turn (under 80 words):\n"
-        f"1. Greet {st.session_state.student_name} warmly on behalf of Department of Veterinary Pathology, CVAS, Pookode.\n"
-        f"2. State a 2-sentence case of two calves at CVAS Pookode (one healthy, one sick).\n"
-        f"3. End with a 3-option MCQ (A, B, C) asking what primary factor caused Calf B to fall ill.\n"
-        f"Do NOT define Etiology yet!"
+        f"Greeting: Welcome {st.session_state.student_name} to Session 1 on behalf of Department of Veterinary Pathology, CVAS, Pookode.\n"
+        f"Scenario: At CVAS Pookode, two calves are housed together under identical management. After a sudden cold draft, Calf B develops severe coughing and fever, while Calf A remains active.\n"
+        f"Task: Present this greeting and scenario together in under 80 words, followed immediately by a 3-option MCQ (A, B, C) asking what primary factor caused Calf B to fall ill. Do NOT define Etiology yet!"
     )
     st.session_state.chat_history.append({"role": "user", "text": init_prompt})
     
@@ -414,7 +387,7 @@ if st.session_state.bystander_mode:
 # -----------------------------------------------------------------------------
 else:
     for idx, msg in enumerate(st.session_state.chat_history):
-        if idx == 0 and "Begin Session 1 of 7 now" in msg["text"]:
+        if idx == 0 and "Greeting: Welcome" in msg["text"]:
             continue
         if msg["role"] == "user" and msg["text"].startswith("I am ready. Continue to Session"):
             continue
@@ -442,8 +415,8 @@ else:
                 st.rerun()
             else:
                 user_input = (
-                    f"I am ready. Begin Session {next_num} of 7 now. Keep response under 80 words. "
-                    f"Address {st.session_state.student_name} warmly. Present a 2-sentence scenario and end with a 3-option MCQ."
+                    f"I am ready. Begin Session {next_num} of 7 now. Address {st.session_state.student_name} warmly. "
+                    f"Present a 2-sentence scenario and end with a 3-option MCQ. Keep total output under 80 words."
                 )
                 st.session_state.chat_history.append({"role": "user", "text": user_input})
 
