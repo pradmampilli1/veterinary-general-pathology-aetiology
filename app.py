@@ -1,9 +1,10 @@
 import os
 import random
 import json
+import urllib.request
+import urllib.error
+import concurrent.futures
 import streamlit as st
-from google import genai
-from google.genai import types
 
 # -----------------------------------------------------------------------------
 # 1. STREAMLIT PAGE CONFIGURATION
@@ -101,15 +102,15 @@ When session objectives are complete, output:
 [SESSION_COMPLETE]
 """
 
-# Explicitly revision-pinned endpoints to avoid API 404 alias routing errors
+# Guaranteed primary production targets across Google AI Studio tiers
 MODELS_TO_TRY = [
-    "gemini-1.5-flash-002",
     "gemini-1.5-flash",
-    "gemini-1.5-pro-002"
+    "gemini-2.0-flash",
+    "gemini-1.5-pro"
 ]
 
 # -----------------------------------------------------------------------------
-# 5. HELPER FUNCTIONS FOR OFFICIAL GENAI SDK & BYSTANDER FALLBACK
+# 5. HELPER FUNCTIONS FOR API & BYSTANDER FALLBACK
 # -----------------------------------------------------------------------------
 
 def load_backup_curriculum():
@@ -142,45 +143,85 @@ def get_all_keys():
 
     return list(set(keys))
 
+def _call_gemini_rest_api(key, contents):
+    """Executes REST API requests using native urllib with fail-safe error trapping."""
+    formatted_contents = []
+    for idx, msg in enumerate(contents):
+        text_content = msg["parts"][0]
+        if idx == 0:
+            text_content = f"{SYSTEM_PROMPT}\n\n[STUDENT CONVERSATION START]\n{text_content}"
+            
+        formatted_contents.append({
+            "role": msg["role"],
+            "parts": [{"text": text_content}]
+        })
+
+    payload = {
+        "contents": formatted_contents,
+        "generationConfig": {
+            "maxOutputTokens": 350
+        }
+    }
+
+    payload_bytes = json.dumps(payload).encode("utf-8")
+    last_err = ""
+
+    for model_name in MODELS_TO_TRY:
+        for ver in ["v1beta", "v1"]:
+            url = f"https://generativelanguage.googleapis.com/{ver}/models/{model_name}:generateContent?key={key}"
+            req = urllib.request.Request(
+                url,
+                data=payload_bytes,
+                headers={"Content-Type": "application/json"},
+                method="POST"
+            )
+
+            try:
+                with urllib.request.urlopen(req, timeout=10) as response:
+                    if response.status == 200:
+                        res_body = json.loads(response.read().decode("utf-8"))
+                        candidates = res_body.get("candidates", [])
+                        if candidates:
+                            parts = candidates[0].get("content", {}).get("parts", [])
+                            if parts and "text" in parts[0]:
+                                return parts[0]["text"], None
+            except urllib.error.HTTPError as e:
+                err_detail = e.read().decode("utf-8")
+                last_err = f"HTTP {e.code} on {model_name} ({ver}): {err_detail[:100]}"
+                continue
+            except Exception as e:
+                last_err = f"Exception on {model_name} ({ver}): {str(e)}"
+                continue
+
+    return None, f"REST Error: {last_err}"
+
 def generate_tutor_response(history_list):
-    """Generates response using official google-genai SDK."""
+    """Generates response using live REST API with thread-safe execution."""
     keys = get_all_keys()
     if not keys:
         st.session_state.bystander_reason = "No API Key found in Streamlit Secrets"
         return None
 
     random.shuffle(keys)
-
-    formatted_contents = []
+    contents = []
     for msg in history_list:
         role = "user" if msg["role"] == "user" else "model"
-        formatted_contents.append(
-            types.Content(
-                role=role,
-                parts=[types.Part.from_text(text=msg["text"])]
-            )
-        )
+        contents.append({
+            "role": role,
+            "parts": [msg["text"]]
+        })
 
     for key in keys:
         try:
-            client = genai.Client(api_key=key)
-            for model_name in MODELS_TO_TRY:
-                try:
-                    response = client.models.generate_content(
-                        model=model_name,
-                        contents=formatted_contents,
-                        config=types.GenerateContentConfig(
-                            system_instruction=SYSTEM_PROMPT,
-                            max_output_tokens=350,
-                        ),
-                    )
-                    if response and response.text:
-                        return response.text
-                except Exception as e:
-                    st.session_state.bystander_reason = f"{model_name} error: {str(e)[:100]}"
-                    continue
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(_call_gemini_rest_api, key, contents)
+                result, err_msg = future.result(timeout=12)
+                if result:
+                    return result
+                elif err_msg:
+                    st.session_state.bystander_reason = err_msg
         except Exception as e:
-            st.session_state.bystander_reason = f"Client Error: {str(e)[:100]}"
+            st.session_state.bystander_reason = f"Timeout or Connection Error: {str(e)}"
             continue
 
     if not st.session_state.bystander_reason:
