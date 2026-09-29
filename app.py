@@ -1,6 +1,7 @@
 import os
 import random
 import json
+import re
 import urllib.request
 import urllib.error
 import concurrent.futures
@@ -228,13 +229,12 @@ def generate_tutor_response(history_list):
     return None
 
 def render_custom_markdown(text):
-    """Cleans marker strings and formats options onto separate lines."""
+    """Cleans marker strings and formats MCQ options onto separate lines safely using regex."""
     clean_text = text.replace("[SESSION_COMPLETE]", "").strip()
     
-    # Automatically force A), B), C) options onto new lines if the model clumps them
-    for opt in [" A)", " B)", " C)", " A.", " B.", " C."]:
-        clean_text = clean_text.replace(opt, f"\n\n{opt.strip()}")
-        
+    # Safely insert newlines before option letters (A, B, C) when they follow sentence-ending punctuation (? or :)
+    clean_text = re.sub(r'([?:]\s+)([A-C]\))', r'\1\n\n\2', clean_text)
+    
     st.markdown(clean_text)
 
 # -----------------------------------------------------------------------------
