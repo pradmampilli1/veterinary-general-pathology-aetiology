@@ -118,10 +118,11 @@ When a session's objectives are met:
 3. STOP GENERATING CONTENT IMMEDIATELY.
 """
 
+# Valid, active production models
 MODELS_TO_TRY = [
     "gemini-2.5-flash",
-    "gemini-1.5-flash",
-    "gemini-2.0-flash"
+    "gemini-2.5-pro",
+    "gemini-1.5-flash"
 ]
 
 # -----------------------------------------------------------------------------
@@ -159,25 +160,29 @@ def get_all_keys():
     return list(set(keys))
 
 def _call_gemini_rest_api(key, contents):
-    """Direct REST API call using native urllib — requires no external pip packages."""
+    """Direct REST API call with combined prompt payload for 100% endpoint compatibility."""
     formatted_contents = []
-    for msg in contents:
+    
+    # Prefix system prompt to the first message for universal REST compatibility
+    for idx, msg in enumerate(contents):
+        text_content = msg["parts"][0]
+        if idx == 0:
+            text_content = f"{SYSTEM_PROMPT}\n\n[STUDENT CONVERSATION START]\n{text_content}"
+            
         formatted_contents.append({
             "role": msg["role"],
-            "parts": [{"text": msg["parts"][0]}]
+            "parts": [{"text": text_content}]
         })
 
     payload = {
         "contents": formatted_contents,
-        "systemInstruction": {
-            "parts": [{"text": SYSTEM_PROMPT}]
-        },
         "generationConfig": {
             "maxOutputTokens": 650
         }
     }
 
     payload_bytes = json.dumps(payload).encode("utf-8")
+    last_err = ""
 
     for model_name in MODELS_TO_TRY:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
@@ -189,7 +194,7 @@ def _call_gemini_rest_api(key, contents):
         )
 
         try:
-            with urllib.request.urlopen(req, timeout=7) as response:
+            with urllib.request.urlopen(req, timeout=10) as response:
                 if response.status == 200:
                     res_body = json.loads(response.read().decode("utf-8"))
                     candidates = res_body.get("candidates", [])
@@ -198,15 +203,17 @@ def _call_gemini_rest_api(key, contents):
                         if parts and "text" in parts[0]:
                             return parts[0]["text"], None
         except urllib.error.HTTPError as e:
-            err_msg = e.read().decode("utf-8")
+            err_detail = e.read().decode("utf-8")
+            last_err = f"HTTP {e.code} on {model_name}: {err_detail[:120]}"
             continue
         except Exception as e:
+            last_err = f"Exception on {model_name}: {str(e)}"
             continue
 
-    return None, "REST API call failed across all specified Gemini model endpoints."
+    return None, f"REST Error: {last_err}"
 
 def generate_tutor_response(history_list):
-    """Generates response using live REST API with an 8-second timeout."""
+    """Generates response using live REST API with a 10-second timeout."""
     keys = get_all_keys()
     if not keys:
         st.session_state.bystander_reason = "No API Key found in Streamlit Secrets"
@@ -225,17 +232,17 @@ def generate_tutor_response(history_list):
         try:
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 future = executor.submit(_call_gemini_rest_api, key, contents)
-                result, err_msg = future.result(timeout=8)
+                result, err_msg = future.result(timeout=10)
                 if result:
                     return result
                 elif err_msg:
                     st.session_state.bystander_reason = err_msg
         except Exception as e:
-            st.session_state.bystander_reason = f"Timeout or Connection Exception: {str(e)}"
+            st.session_state.bystander_reason = f"Timeout or Connection Error: {str(e)}"
             continue
 
     if not st.session_state.bystander_reason:
-        st.session_state.bystander_reason = "All model attempts failed or key quota exceeded"
+        st.session_state.bystander_reason = "All Gemini model REST calls failed"
     return None
 
 def render_custom_markdown(text):
