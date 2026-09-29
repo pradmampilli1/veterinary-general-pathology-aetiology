@@ -75,26 +75,27 @@ if not st.session_state.student_logged_in:
     st.stop()
 
 # -----------------------------------------------------------------------------
-# 4. PEDAGOGICAL SYSTEM PROMPT DEFINITION
+# 4. PEDAGOGICAL SYSTEM PROMPT DEFINITION (TUNED FOR ABSOLUTE BEGINNERS)
 # -----------------------------------------------------------------------------
 SYSTEM_PROMPT = r"""
 # SYSTEM PROMPT: AI INTERACTIVE TUTOR FOR GENERAL VETERINARY PATHOLOGY
 
 **MODULE:** ETIOLOGY AND CLASSIFICATION OF DISEASE  
-**TARGET AUDIENCE:** BVSc & AH Students (Total Beginners)  
-**PEDAGOGICAL STYLE:** Micro-Socratic, Ultra-Concise (50–90 words), MCQ-Driven.
+**TARGET AUDIENCE:** BVSc & AH Students (Total Beginners / First Year)  
+**PEDAGOGICAL STYLE:** Micro-Socratic, Ultra-Concise (50–90 words), Simple Everyday Language, MCQ-Driven.
 
 ==================================================
-STRICT PEDAGOGICAL RULES
+STRICT PEDAGOGICAL RULES FOR ABSOLUTE BEGINNERS
 1. **WORD LIMIT**: Your response MUST be between 50 and 90 words total. No filler or meta-commentary.
-2. **MANDATORY MCQ**: Every response MUST end with a single 3-option multiple-choice question (A, B, C). NEVER ask broad open-ended questions.
-3. **NO EARLY DEFINITIONS**: Do NOT define "Etiology" or technical terms until after the student answers the scenario question.
-4. **FORMATTING**: Standard Markdown only. Place each MCQ option on its own separate line.
+2. **BEGINNER LANGUAGE**: Talk like a friendly clinical mentor. Use everyday field examples (e.g., farm calves, feeds, weather) instead of heavy academic textbook phrasing.
+3. **MANDATORY MCQ**: Every response MUST end with a single 3-option multiple-choice question (A, B, C). NEVER ask broad open-ended questions.
+4. **NO EARLY DEFINITIONS**: Do NOT define "Etiology" or technical terms until after the student answers the scenario question.
+5. **FORMATTING**: Standard Markdown only. Place each MCQ option on its own separate line.
 
 ==================================================
 TERMINOLOGY CARD FORMAT (WHEN INTRODUCING A TERM)
 📌 **TERM:** [Term]  
-• **Definition:** [1 concise sentence]  
+• **Definition:** [1 simple sentence]  
 • **Veterinary Example:** [1 short clinical example]
 
 ==================================================
@@ -103,7 +104,7 @@ When session objectives are complete, output:
 [SESSION_COMPLETE]
 """
 
-# Locked to verified Gemini 3 series flash-lite endpoint
+# Locked to verified Gemini flash-lite endpoints
 MODELS_TO_TRY = [
     "gemini-3.1-flash-lite",
     "gemini-3.5-flash-lite"
@@ -144,7 +145,7 @@ def get_all_keys():
     return list(set(keys))
 
 def _call_gemini_rest_api(key, contents):
-    """Executes REST API requests using standard urllib over gemini-3.1-flash-lite."""
+    """Executes REST API requests using standard urllib over Gemini endpoints."""
     formatted_contents = []
     for idx, msg in enumerate(contents):
         text_content = msg["parts"][0]
@@ -232,7 +233,7 @@ def render_custom_markdown(text):
     """Cleans marker strings and forces every MCQ option onto its own line robustly."""
     clean_text = text.replace("[SESSION_COMPLETE]", "").strip()
     
-    # Use regex to find any inline option identifier (A), B), C)) preceded by space/text and split it onto a clean new line
+    # Use regex to ensure option letters (A, B, C) always start on a fresh newline
     clean_text = re.sub(r'(?<=\S)\s+([A-C]\))', r'\n\n\1', clean_text)
     
     st.markdown(clean_text)
@@ -268,12 +269,13 @@ st.markdown(
 )
 st.write("---")
 
-# Start initial lesson ONLY AFTER successful login
+# Start initial lesson ONLY AFTER successful login (Tailored for absolute beginners)
 if not st.session_state.chat_history and not st.session_state.completed_bystander_sessions:
     init_prompt = (
         f"Greeting: Welcome {st.session_state.student_name} to Session 1 on behalf of Department of Veterinary Pathology, CVAS, Pookode.\n"
-        f"Scenario: At CVAS Pookode, two calves are housed together under identical management. After a sudden cold draft, Calf B develops severe coughing and fever, while Calf A remains active.\n"
-        f"Task: Write a single response combining the greeting, the 2-sentence calf scenario, and a 3-option MCQ (A, B, C) asking what primary factor caused Calf B to fall ill. Keep total output under 90 words. Do NOT define Etiology yet!"
+        f"Target Audience Note: The student is a complete first-year beginner in veterinary medicine. Keep language extremely simple, warm, and clear.\n"
+        f"Scenario: Imagine you are working at our livestock farm here in Pookode. Two healthy calves are standing side by side in the exact same pen. Suddenly, a cold wind blows in overnight. By morning, Calf B has a heavy cough and fever, while Calf A is completely fine and playful.\n"
+        f"Task: Write a single friendly response combining the greeting, this simple beginner scenario, and a 3-option MCQ (A, B, C) asking why Calf B got sick while Calf A stayed healthy. Keep total output under 90 words. Do NOT define Etiology yet!"
     )
     st.session_state.chat_history.append({"role": "user", "text": init_prompt})
     
@@ -420,8 +422,8 @@ else:
                 st.rerun()
             else:
                 user_input = (
-                    f"I am ready. Begin Session {next_num} of 7 now. Address {st.session_state.student_name} warmly. "
-                    f"Present a 2-sentence scenario and end with a 3-option MCQ. Keep total output under 80 words."
+                    f"I am ready. Begin Session {next_num} of 7 now for an absolute first-year beginner student ({st.session_state.student_name}). "
+                    f"Use simple farm animal language. Present a brief 2-sentence everyday livestock scenario and end with a 3-option MCQ. Keep total output under 80 words."
                 )
                 st.session_state.chat_history.append({"role": "user", "text": user_input})
 
