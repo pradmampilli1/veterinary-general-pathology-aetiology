@@ -85,10 +85,10 @@ SYSTEM_PROMPT = r"""
 
 ==================================================
 STRICT PEDAGOGICAL RULES
-1. **WORD LIMIT**: Your response MUST be between 50 and 90 words total. No fluff or repetitive meta-language.
-2. **MANDATORY MCQ**: Every turn MUST end with a single 3-option multiple-choice question (A, B, C). NEVER ask broad open-ended questions like "What do you think?" or "Why do we classify this?".
+1. **WORD LIMIT**: Your response MUST be between 50 and 90 words total. No meta-commentary or introductory filler.
+2. **MANDATORY MCQ**: Every response MUST end with a single 3-option multiple-choice question (A, B, C). NEVER ask broad open-ended questions like "What do you think?" or "Why do we classify this?".
 3. **NO EARLY DEFINITIONS**: Do NOT define "Etiology" or technical terms until after the student answers the scenario question.
-4. **FORMATTING**: Use standard Markdown only. Place each MCQ option on a new line.
+4. **FORMATTING**: Standard Markdown only. Place each MCQ option on its own line.
 
 ==================================================
 TERMINOLOGY CARD FORMAT (WHEN INTRODUCING A TERM)
@@ -98,15 +98,15 @@ TERMINOLOGY CARD FORMAT (WHEN INTRODUCING A TERM)
 
 ==================================================
 SESSION ENDING
-When session goals are complete, end with:
+When session objectives are complete, output:
 [SESSION_COMPLETE]
 """
 
-# Priority fallback list of production models
+# Explicit active production model endpoints
 MODELS_TO_TRY = [
     "gemini-2.5-flash",
-    "gemini-1.5-flash",
-    "gemini-1.5-pro"
+    "gemini-1.5-flash-latest",
+    "gemini-1.5-pro-latest"
 ]
 
 # -----------------------------------------------------------------------------
@@ -144,7 +144,7 @@ def get_all_keys():
     return list(set(keys))
 
 def _call_gemini_rest_api(key, contents):
-    """Executes REST API requests using standard urllib without external SDK dependencies."""
+    """Executes REST API requests using native urllib with verified path formatting."""
     formatted_contents = []
     for idx, msg in enumerate(contents):
         text_content = msg["parts"][0]
@@ -167,7 +167,10 @@ def _call_gemini_rest_api(key, contents):
     last_err = ""
 
     for model_name in MODELS_TO_TRY:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
+        # Format model path cleanly for REST v1beta routing
+        model_path = model_name if model_name.startswith("models/") else f"models/{model_name}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/{model_path}:generateContent?key={key}"
+        
         req = urllib.request.Request(
             url,
             data=payload_bytes,
@@ -195,7 +198,7 @@ def _call_gemini_rest_api(key, contents):
     return None, f"REST Error: {last_err}"
 
 def generate_tutor_response(history_list):
-    """Generates response using live REST API with an extended timeout."""
+    """Generates response using live REST API with thread-safe timeout handling."""
     keys = get_all_keys()
     if not keys:
         st.session_state.bystander_reason = "No API Key found in Streamlit Secrets"
@@ -268,7 +271,7 @@ if not st.session_state.chat_history and not st.session_state.completed_bystande
     init_prompt = (
         f"Greeting: Welcome {st.session_state.student_name} to Session 1 on behalf of Department of Veterinary Pathology, CVAS, Pookode.\n"
         f"Scenario: At CVAS Pookode, two calves are housed together under identical management. After a sudden cold draft, Calf B develops severe coughing and fever, while Calf A remains active.\n"
-        f"Task: Present this greeting and scenario together in under 80 words, followed immediately by a 3-option MCQ (A, B, C) asking what primary factor caused Calf B to fall ill. Do NOT define Etiology yet!"
+        f"Task: Write a single response combining the greeting, the 2-sentence calf scenario, and a 3-option MCQ (A, B, C) asking what primary factor caused Calf B to fall ill. Keep total output under 80 words. Do NOT define Etiology yet!"
     )
     st.session_state.chat_history.append({"role": "user", "text": init_prompt})
     
