@@ -75,7 +75,7 @@ if not st.session_state.student_logged_in:
     st.stop()
 
 # -----------------------------------------------------------------------------
-# 4. MASTER CURRICULUM SYSTEM PROMPT
+# 4. MASTER CURRICULUM SYSTEM PROMPT (STRICTLY PRESERVING API & BEGINNER ALIGNMENT)
 # -----------------------------------------------------------------------------
 SYSTEM_PROMPT = r"""
 # SYSTEM PROMPT: AI INTERACTIVE TUTOR FOR GENERAL VETERINARY PATHOLOGY
@@ -94,16 +94,15 @@ CORE CURRICULUM RULES
 6. **SESSION COMPLETION**: When session objectives are finished, output `[SESSION_COMPLETE]`.
 """
 
-# Locked to verified Gemini flash-lite endpoints
+# Preserved exact model targets
 MODELS_TO_TRY = [
     "gemini-3.1-flash-lite",
     "gemini-3.5-flash-lite"
 ]
 
 # -----------------------------------------------------------------------------
-# 5. HELPER FUNCTIONS FOR REST API & BYSTANDER FALLBACK
+# 5. PRESERVED API KEY RETRIEVAL & ROTATION LOGIC
 # -----------------------------------------------------------------------------
-
 def load_backup_curriculum():
     """Loads the frozen fallback JSON dataset reliably using absolute pathing."""
     base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -135,7 +134,7 @@ def get_all_keys():
     return list(set(keys))
 
 def _call_gemini_rest_api(key, contents):
-    """Executes REST API requests using standard urllib over Gemini endpoints."""
+    """Executes REST API requests using standard urllib over preserved endpoints."""
     formatted_contents = []
     for idx, msg in enumerate(contents):
         text_content = msg["parts"][0]
@@ -187,7 +186,7 @@ def _call_gemini_rest_api(key, contents):
     return None, f"REST Error: {last_err}"
 
 def generate_tutor_response(history_list):
-    """Generates response using live REST API with thread-safe execution."""
+    """Generates response using live REST API with thread-safe execution and key rotation."""
     keys = get_all_keys()
     if not keys:
         st.session_state.bystander_reason = "No API Key found in Streamlit Secrets"
@@ -256,7 +255,7 @@ st.markdown(
 )
 st.write("---")
 
-# Start session 1 using strict beginner curriculum rules
+# Start Session 1 aligned with curriculum rules
 if not st.session_state.chat_history and not st.session_state.completed_bystander_sessions:
     init_prompt = (
         f"Greeting: Welcome {st.session_state.student_name} to Session 1 (What is Etiology?) on behalf of Department of Veterinary Pathology, CVAS, Pookode.\n"
@@ -273,7 +272,7 @@ if not st.session_state.chat_history and not st.session_state.completed_bystande
             st.session_state.bystander_mode = True
 
 # -----------------------------------------------------------------------------
-# 7. BYSTANDER MODE RENDERER (OFFLINE JSON FALLBACK ENGINE)
+# 7. BYSTANDER MODE RENDERER (OFFLINE JSON FALLBACK ENGINE WITH RECOVERY)
 # -----------------------------------------------------------------------------
 if st.session_state.bystander_mode:
     st.warning("⚡ **Bystander Backup Engine Active** (Running in high-reliability offline mode)")
