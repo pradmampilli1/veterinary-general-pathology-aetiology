@@ -232,10 +232,7 @@ def generate_tutor_response(history_list):
 def render_custom_markdown(text):
     """Cleans marker strings and forces every MCQ option onto its own line robustly."""
     clean_text = text.replace("[SESSION_COMPLETE]", "").strip()
-    
-    # Use regex to ensure option letters (A, B, C) always start on a fresh newline
     clean_text = re.sub(r'(?<=\S)\s+([A-C]\))', r'\n\n\1', clean_text)
-    
     st.markdown(clean_text)
 
 # -----------------------------------------------------------------------------
@@ -269,7 +266,7 @@ st.markdown(
 )
 st.write("---")
 
-# Start initial lesson ONLY AFTER successful login (Tailored for absolute beginners)
+# Start initial lesson ONLY AFTER successful login
 if not st.session_state.chat_history and not st.session_state.completed_bystander_sessions:
     init_prompt = (
         f"Greeting: Welcome {st.session_state.student_name} to Session 1 on behalf of Department of Veterinary Pathology, CVAS, Pookode.\n"
@@ -287,12 +284,21 @@ if not st.session_state.chat_history and not st.session_state.completed_bystande
             st.session_state.bystander_mode = True
 
 # -----------------------------------------------------------------------------
-# 7. BYSTANDER MODE RENDERER (OFFLINE JSON FALLBACK ENGINE)
+# 7. BYSTANDER MODE RENDERER (OFFLINE JSON FALLBACK ENGINE WITH RECOVERY BUTTON)
 # -----------------------------------------------------------------------------
 if st.session_state.bystander_mode:
-    st.info("⚡ **Bystander Backup Engine Active** (Running in high-reliability offline mode)")
+    st.warning("⚡ **Bystander Backup Engine Active** (Running in high-reliability offline mode)")
     if st.session_state.bystander_reason:
         st.caption(f"ℹ️ *Diagnostic Note: {st.session_state.bystander_reason}*")
+    
+    # 🔄 SELF-HEALING RECOVERY BUTTON TO JUMP BACK ONLINE INSTANTLY
+    if st.button("🔄 Switch Back to Live AI Connection", type="primary"):
+        st.session_state.bystander_mode = False
+        st.session_state.bystander_reason = ""
+        st.success("Reconnecting to live API...")
+        st.rerun()
+    
+    st.write("---")
     
     backup_data = load_backup_curriculum()
     
