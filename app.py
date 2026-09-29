@@ -102,7 +102,7 @@ When session objectives are complete, output:
 [SESSION_COMPLETE]
 """
 
-# Current production-stable model identifiers
+# Active production endpoint targets
 MODELS_TO_TRY = [
     "gemini-3.8-flash",
     "gemini-3.5-flash-lite",
@@ -159,7 +159,7 @@ def _call_gemini_rest_api(key, contents):
     payload = {
         "contents": formatted_contents,
         "generationConfig": {
-            "maxOutputTokens": 300
+            "maxOutputTokens": 800  # Increased token limit to prevent mid-sentence truncation
         }
     }
 
@@ -269,7 +269,7 @@ if not st.session_state.chat_history and not st.session_state.completed_bystande
     init_prompt = (
         f"Greeting: Welcome {st.session_state.student_name} to Session 1 on behalf of Department of Veterinary Pathology, CVAS, Pookode.\n"
         f"Scenario: At CVAS Pookode, two calves are housed together under identical management. After a sudden cold draft, Calf B develops severe coughing and fever, while Calf A remains active.\n"
-        f"Task: Write a single response combining the greeting, the 2-sentence calf scenario, and a 3-option MCQ (A, B, C) asking what primary factor caused Calf B to fall ill. Keep total output under 80 words. Do NOT define Etiology yet!"
+        f"Task: Write a single response combining the greeting, the 2-sentence calf scenario, and a 3-option MCQ (A, B, C) asking what primary factor caused Calf B to fall ill. Keep total output under 90 words. Do NOT define Etiology yet!"
     )
     st.session_state.chat_history.append({"role": "user", "text": init_prompt})
     
