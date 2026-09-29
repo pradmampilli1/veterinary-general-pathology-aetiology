@@ -101,10 +101,11 @@ When session objectives are complete, output:
 [SESSION_COMPLETE]
 """
 
-# Standard active models recognized by the official SDK
+# Explicitly revision-pinned endpoints to avoid API 404 alias routing errors
 MODELS_TO_TRY = [
+    "gemini-1.5-flash-002",
     "gemini-1.5-flash",
-    "gemini-1.5-pro"
+    "gemini-1.5-pro-002"
 ]
 
 # -----------------------------------------------------------------------------
@@ -150,7 +151,6 @@ def generate_tutor_response(history_list):
 
     random.shuffle(keys)
 
-    # Convert conversation history to google-genai Content structures
     formatted_contents = []
     for msg in history_list:
         role = "user" if msg["role"] == "user" else "model"
