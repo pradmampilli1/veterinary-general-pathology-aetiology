@@ -110,9 +110,11 @@ JSON STRUCTURE REQUIRED:
 }
 """
 
+# Updated to use current Gemini 3 / 3.5 / 3.8 endpoints
 MODELS_TO_TRY = [
-    "gemini-1.5-flash",
-    "gemini-1.5-pro"
+    "gemini-3.8-flash",
+    "gemini-3.5-flash",
+    "gemini-3.1-pro-preview"
 ]
 
 # -----------------------------------------------------------------------------
@@ -167,7 +169,6 @@ def fetch_structured_session_from_ai(session_num, student_name):
 
     for key in keys:
         for model_name in MODELS_TO_TRY:
-            # Using v1beta endpoint reliably
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
             req = urllib.request.Request(
                 url, data=payload_bytes, headers={"Content-Type": "application/json"}, method="POST"
