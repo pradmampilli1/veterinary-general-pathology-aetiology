@@ -70,7 +70,7 @@ if not st.session_state.student_logged_in:
 CURRICULUM_SESSIONS = {
     1: {
         "title": "Session 1 of 7 — What is Etiology?",
-        "intro": "Welcome! As first-year veterinary students, our central question throughout this module is simply: **WHY did this animal become sick?** Let's start with a real farm observation.",
+        "intro": "Welcome to **General Veterinary Pathology**! As you step into your second year, you are beginning the study of disease. Our central question throughout this module is fundamental: **WHY did this animal become sick?** Let's start with a real farm observation.",
         "scenario": "Two dairy calves are housed under identical management conditions on the CVAS Pookode farm. After a sudden cold night and heavy rain, Calf B develops a severe cough and high fever, while Calf A remains completely healthy and active.",
         "question": "What is the most logical reason or factor that explains why Calf B fell sick while Calf A stayed healthy?",
         "options": [
