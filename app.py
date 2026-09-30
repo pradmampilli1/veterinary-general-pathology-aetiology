@@ -1,7 +1,6 @@
 import os
 import random
 import json
-import re
 import urllib.request
 import urllib.error
 import concurrent.futures
@@ -28,14 +27,11 @@ if "student_name" not in st.session_state:
 if "student_id" not in st.session_state:
     st.session_state.student_id = ""
 
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
+if "live_session_data" not in st.session_state:
+    st.session_state.live_session_data = None
 
-if "completed_bystander_sessions" not in st.session_state:
-    st.session_state.completed_bystander_sessions = []
-
-if "session_complete_pending" not in st.session_state:
-    st.session_state.session_complete_pending = False
+if "completed_sessions" not in st.session_state:
+    st.session_state.completed_sessions = []
 
 if "current_session_num" not in st.session_state:
     st.session_state.current_session_num = 1
@@ -45,6 +41,12 @@ if "bystander_mode" not in st.session_state:
 
 if "bystander_reason" not in st.session_state:
     st.session_state.bystander_reason = ""
+
+if "last_feedback" not in st.session_state:
+    st.session_state.last_feedback = ""
+
+if "show_next_button" not in st.session_state:
+    st.session_state.show_next_button = False
 
 # -----------------------------------------------------------------------------
 # 3. ISOLATED STUDENT LOGIN SCREEN
@@ -75,38 +77,48 @@ if not st.session_state.student_logged_in:
     st.stop()
 
 # -----------------------------------------------------------------------------
-# 4. MASTER CURRICULUM SYSTEM PROMPT (WITH STRICT ANSWER GRADING RULES)
+# 4. MASTER CURRICULUM SYSTEM PROMPT (STRUCTURED JSON)
 # -----------------------------------------------------------------------------
 SYSTEM_PROMPT = r"""
-# SYSTEM PROMPT: AI INTERACTIVE TUTOR FOR GENERAL VETERINARY PATHOLOGY
+# SYSTEM PROMPT: STRUCTURED VETERINARY PATHOLOGY TUTOR
 
 **MODULE:** ETIOLOGY AND CLASSIFICATION OF DISEASE  
-**TARGET AUDIENCE:** BVSc & AH Students (Complete Beginners / First Year)  
-**PEDAGOGICAL STYLE:** Micro-Socratic, Ultra-Concise (50–90 words), Simple Everyday Language, MCQ-Driven.
+**TARGET AUDIENCE:** BVSc & AH First-Year Students (CVAS Pookode)  
+**PEDAGOGICAL STYLE:** Micro-Socratic, Ultra-Concise, Beginner Language, Strict MCQ-Driven.
 
-==================================================
-CORE CURRICULUM & STRICT GRADING RULES
-1. **ROLE**: You are a friendly veterinary teacher at CVAS Pookode. The central question is always: "WHY did this animal become sick?"
-2. **STRICT ANSWER GRADING**: When the student replies with their MCQ choice (e.g., A, B, or C), you MUST evaluate whether it matches the correct answer of the question you asked.
-   - If incorrect, say: "Good attempt. Think about what actually affected the animal." Give a small clue or explain why, and ask them to try again or guide them to the correct concept without instantly advancing.
-   - If correct, provide brief positive feedback, introduce the terminology card, output `[SESSION_COMPLETE]` if the session is done, or move to the next step.
-3. **WORD LIMIT**: Keep each turn between 50 and 90 words. Avoid long lectures.
-4. **BEGINNER LANGUAGE**: Use simple words. Introduce ONE concept at a time. Use everyday livestock examples.
-5. **NO EARLY DEFINITIONS**: NEVER define "Etiology" or technical terms until after the student answers the initial scenario question correctly.
-6. **FORMATTING**: Standard Markdown only. Place each MCQ option on its own separate line.
+You must output ONLY valid JSON matching this exact structure, with no markdown code blocks around it if possible. Do not include conversational filler.
+
+JSON STRUCTURE REQUIRED:
+{
+  "title": "Session Title (e.g., Session X of 7 - Topic)",
+  "scenario": "Short clinical or farm scenario using simple livestock examples (under 70 words). Never define technical terms early.",
+  "question": "The core question for the student.",
+  "options": [
+    "A) First choice text",
+    "B) Second choice text",
+    "C) Third choice text"
+  ],
+  "correct_option": "A",
+  "feedback_correct": "Positive reinforcement and conceptual explanation.",
+  "feedback_incorrect": "Gentle guidance without revealing the answer.",
+  "term_card": {
+    "term": "Technical term name",
+    "meaning": "Simple everyday meaning",
+    "example": "Primary veterinary example"
+  },
+  "recap": "One sentence summary recap."
+}
 """
 
-# Preserved exact model targets
 MODELS_TO_TRY = [
-    "gemini-3.1-flash-lite",
-    "gemini-3.5-flash-lite"
+    "gemini-1.5-pro",
+    "gemini-1.5-flash"
 ]
 
 # -----------------------------------------------------------------------------
 # 5. PRESERVED API KEY RETRIEVAL & ROTATION LOGIC
 # -----------------------------------------------------------------------------
 def load_backup_curriculum():
-    """Loads the frozen fallback JSON dataset reliably using absolute pathing."""
     base_dir = os.path.dirname(os.path.abspath(__file__))
     file_path = os.path.join(base_dir, "curriculum_backup.json")
     try:
@@ -116,7 +128,6 @@ def load_backup_curriculum():
         return None
 
 def get_all_keys():
-    """Retrieves all API keys from Streamlit secrets or OS environment."""
     keys = []
     try:
         for k in st.secrets:
@@ -135,96 +146,47 @@ def get_all_keys():
 
     return list(set(keys))
 
-def _call_gemini_rest_api(key, contents):
-    """Executes REST API requests using standard urllib over preserved endpoints."""
-    formatted_contents = []
-    for idx, msg in enumerate(contents):
-        text_content = msg["parts"][0]
-        if idx == 0:
-            text_content = f"{SYSTEM_PROMPT}\n\n[STUDENT CONVERSATION START]\n{text_content}"
-            
-        formatted_contents.append({
-            "role": msg["role"],
-            "parts": [{"text": text_content}]
-        })
-
-    payload = {
-        "contents": formatted_contents,
-        "generationConfig": {
-            "maxOutputTokens": 600
-        }
-    }
-
-    payload_bytes = json.dumps(payload).encode("utf-8")
-    last_err = ""
-
-    for model_name in MODELS_TO_TRY:
-        for ver in ["v1beta", "v1"]:
-            url = f"https://generativelanguage.googleapis.com/{ver}/models/{model_name}:generateContent?key={key}"
-            req = urllib.request.Request(
-                url,
-                data=payload_bytes,
-                headers={"Content-Type": "application/json"},
-                method="POST"
-            )
-
-            try:
-                with urllib.request.urlopen(req, timeout=12) as response:
-                    if response.status == 200:
-                        res_body = json.loads(response.read().decode("utf-8"))
-                        candidates = res_body.get("candidates", [])
-                        if candidates:
-                            parts = candidates[0].get("content", {}).get("parts", [])
-                            if parts and "text" in parts[0]:
-                                return parts[0]["text"], None
-            except urllib.error.HTTPError as e:
-                err_detail = e.read().decode("utf-8")
-                last_err = f"HTTP {e.code} on {model_name} ({ver}): {err_detail[:100]}"
-                continue
-            except Exception as e:
-                last_err = f"Exception on {model_name} ({ver}): {str(e)}"
-                continue
-
-    return None, f"REST Error: {last_err}"
-
-def generate_tutor_response(history_list):
-    """Generates response using live REST API with thread-safe execution and key rotation."""
+def fetch_structured_session_from_ai(session_num, student_name):
     keys = get_all_keys()
     if not keys:
         st.session_state.bystander_reason = "No API Key found in Streamlit Secrets"
         return None
 
     random.shuffle(keys)
-    contents = []
-    for msg in history_list:
-        role = "user" if msg["role"] == "user" else "model"
-        contents.append({
-            "role": role,
-            "parts": [msg["text"]]
-        })
+    prompt = f"Generate Session {session_num} of 7 for student {student_name} under the Department of Veterinary Pathology, CVAS Pookode. Focus strictly on the curriculum module: Etiology and Classification of Disease. Ensure exactly 3 distinct MCQ options (A, B, C)."
+
+    payload = {
+        "contents": [{"role": "user", "parts": [{"text": f"{SYSTEM_PROMPT}\n\n{prompt}"}]}],
+        "generationConfig": {
+            "responseMimeType": "application/json",
+            "maxOutputTokens": 800
+        }
+    }
+    payload_bytes = json.dumps(payload).encode("utf-8")
+    last_err = ""
 
     for key in keys:
-        try:
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                future = executor.submit(_call_gemini_rest_api, key, contents)
-                result, err_msg = future.result(timeout=14)
-                if result:
-                    return result
-                elif err_msg:
-                    st.session_state.bystander_reason = err_msg
-        except Exception as e:
-            st.session_state.bystander_reason = f"Timeout or Connection Error: {str(e)}"
-            continue
+        for model_name in MODELS_TO_TRY:
+            for ver in ["v1beta", "v1"]:
+                url = f"https://generativelanguage.googleapis.com/{ver}/models/{model_name}:generateContent?key={key}"
+                req = urllib.request.Request(
+                    url, data=payload_bytes, headers={"Content-Type": "application/json"}, method="POST"
+                )
+                try:
+                    with urllib.request.urlopen(req, timeout=12) as response:
+                        if response.status == 200:
+                            res_body = json.loads(response.read().decode("utf-8"))
+                            candidates = res_body.get("candidates", [])
+                            if candidates:
+                                text_out = candidates[0].get("content", {}).get("parts", [])[0]["text"]
+                                text_out = text_out.replace("```json", "").replace("```", "").strip()
+                                return json.loads(text_out)
+                except Exception as e:
+                    last_err = str(e)
+                    continue
 
-    if not st.session_state.bystander_reason:
-        st.session_state.bystander_reason = "All Gemini model REST calls failed"
+    st.session_state.bystander_reason = f"REST Error or Rate Limit: {last_err}"
     return None
-
-def render_custom_markdown(text):
-    """Cleans marker strings and forces every MCQ option onto its own line robustly."""
-    clean_text = text.replace("[SESSION_COMPLETE]", "").strip()
-    clean_text = re.sub(r'(?<=\S)\s+([A-C]\))', r'\n\n\1', clean_text)
-    st.markdown(clean_text)
 
 # -----------------------------------------------------------------------------
 # 6. HEADER & SIDEBAR PROFILE DISPLAY
@@ -244,11 +206,10 @@ with st.sidebar:
     
     if st.button("🚪 Logout / Switch Student"):
         st.session_state.student_logged_in = False
-        st.session_state.chat_history = []
-        st.session_state.completed_bystander_sessions = []
+        st.session_state.live_session_data = None
+        st.session_state.completed_sessions = []
         st.session_state.current_session_num = 1
         st.session_state.bystander_mode = False
-        st.session_state.bystander_reason = ""
         st.rerun()
 
 st.markdown(
@@ -257,24 +218,34 @@ st.markdown(
 )
 st.write("---")
 
-# Start Session 1
-if not st.session_state.chat_history and not st.session_state.completed_bystander_sessions:
-    init_prompt = (
-        f"Greeting: Welcome {st.session_state.student_name} to Session 1 (What is Etiology?) on behalf of Department of Veterinary Pathology, CVAS, Pookode.\n"
-        f"Current Session: 1 of 7\n"
-        f"Task: Introduce the central question ('WHY did this animal become sick?'). Present a short farm situation where two calves eat the same grass but only one gets sick. End with a 3-option MCQ (A, B, C) where only ONE option is correct. Keep total output under 80 words. DO NOT define Etiology yet!"
-    )
-    st.session_state.chat_history.append({"role": "user", "text": init_prompt})
-    
-    with st.spinner("Connecting to Pathology Tutor..."):
-        live_resp = generate_tutor_response(st.session_state.chat_history)
-        if live_resp:
-            st.session_state.chat_history.append({"role": "model", "text": live_resp})
-        else:
-            st.session_state.bystander_mode = True
+# -----------------------------------------------------------------------------
+# 7. INITIALIZE SESSION DATA
+# -----------------------------------------------------------------------------
+if st.session_state.current_session_num <= 7:
+    if not st.session_state.live_session_data and not st.session_state.bystander_mode:
+        with st.spinner(f"Preparing Session {st.session_state.current_session_num} of 7..."):
+            ai_data = fetch_structured_session_from_ai(st.session_state.current_session_num, st.session_state.student_name)
+            if ai_data:
+                st.session_state.live_session_data = ai_data
+            else:
+                st.session_state.bystander_mode = True
 
 # -----------------------------------------------------------------------------
-# 7. BYSTANDER MODE RENDERER (OFFLINE JSON FALLBACK ENGINE WITH RECOVERY)
+# 8. RENDER COMPLETED EXPANDERS
+# -----------------------------------------------------------------------------
+for comp in st.session_state.completed_sessions:
+    with st.expander(f"✅ Completed: {comp['title']}", expanded=False):
+        st.write(comp['scenario'])
+        st.success(comp['feedback'])
+        term = comp['term_card']
+        st.markdown(
+            f"📌 **TERM: {term['term']}**\n"
+            f"• **Simple meaning:** {term['meaning']}\n"
+            f"• **Veterinary example:** {term['example']}"
+        )
+
+# -----------------------------------------------------------------------------
+# 9. MAIN INTERACTIVE UI (LIVE OR OFFLINE BYSTANDER BACKUP)
 # -----------------------------------------------------------------------------
 if st.session_state.bystander_mode:
     st.warning("⚡ **Bystander Backup Engine Active** (Running in high-reliability offline mode)")
@@ -284,173 +255,97 @@ if st.session_state.bystander_mode:
     if st.button("🔄 Switch Back to Live AI Connection", type="primary"):
         st.session_state.bystander_mode = False
         st.session_state.bystander_reason = ""
-        st.success("Reconnecting to live API...")
         st.rerun()
     
     st.write("---")
+    backup_data = load_backup_curriculum()
+    sess_key = f"session_{st.session_state.current_session_num}"
+    if backup_data and sess_key in backup_data:
+        curr = backup_data[sess_key]
+        active_data = {
+            "title": curr["title"],
+            "scenario": curr["scenario"],
+            "question": curr["question"],
+            "options": curr["options"],
+            "correct_option": curr["correct_option"],
+            "feedback_correct": curr["feedback_correct"],
+            "feedback_incorrect": curr["feedback_incorrect"],
+            "term_card": curr["term_card"],
+            "recap": curr["recap"]
+        }
+    else:
+        active_data = None
+else:
+    active_data = st.session_state.live_session_data
+
+if st.session_state.current_session_num > 7:
+    st.balloons()
+    st.success(f"🎉 **CONGRATULATIONS {st.session_state.student_name.upper()}! MODULE COMPLETED SUCCESSFULLY!**")
+    st.markdown(f"**Admission No:** `{st.session_state.student_id}`")
     
     backup_data = load_backup_curriculum()
+    if backup_data and "completion_matrix" in backup_data:
+        matrix = backup_data["completion_matrix"]
+        st.markdown(f"### {matrix['header']}")
+        table_md = "| Etiological Category | Primary Definition | Primary Veterinary Example |\n| :--- | :--- | :--- |\n"
+        for row in matrix["rows"]:
+            table_md += f"| **{row['category']}** | {row['definition']} | {row['example']} |\n"
+        st.markdown(table_md)
     
-    for comp in st.session_state.completed_bystander_sessions:
-        with st.expander(f"✅ Completed: {comp['title']}", expanded=False):
-            st.write(comp['scenario'])
-            st.success(comp['feedback'])
-            term = comp['term_card']
-            st.markdown(
-                f"📌 **TERM: {term['term']}**\n"
-                f"• **Simple meaning:** {term['meaning']}\n"
-                f"• **Veterinary example:** {term['example']}"
-            )
-            st.caption(f"Recap: {comp['recap']}")
+    if st.button("🔄 Restart Module", type="primary"):
+        st.session_state.current_session_num = 1
+        st.session_state.completed_sessions = []
+        st.session_state.live_session_data = None
+        st.session_state.bystander_mode = False
+        st.rerun()
 
-    if st.session_state.current_session_num > 7:
-        st.balloons()
-        st.success(f"🎉 **CONGRATULATIONS {st.session_state.student_name.upper()}! MODULE COMPLETED SUCCESSFULLY!**")
-        st.markdown(f"**Admission No:** `{st.session_state.student_id}`")
-        
-        if backup_data and "completion_matrix" in backup_data:
-            matrix = backup_data["completion_matrix"]
-            st.markdown(f"### {matrix['header']}")
+elif active_data:
+    st.subheader(active_data["title"])
+    st.write(active_data["scenario"])
+    st.write(f"**Question:** {active_data['question']}")
+    
+    user_choice = st.radio(
+        "Select your answer:", 
+        active_data["options"], 
+        key=f"radio_session_{st.session_state.current_session_num}"
+    )
+    
+    if not st.session_state.show_next_button:
+        if st.button("Submit Answer", type="primary"):
+            selected_letter = user_choice.split(")")[0].strip()
             
-            table_md = "| Etiological Category | Primary Definition | Primary Veterinary Example |\n| :--- | :--- | :--- |\n"
-            for row in matrix["rows"]:
-                table_md += f"| **{row['category']}** | {row['definition']} | {row['example']} |\n"
-            st.markdown(table_md)
-        
-        if st.button("🔄 Restart Module", type="primary"):
-            st.session_state.current_session_num = 1
-            st.session_state.completed_bystander_sessions = []
-            st.session_state.session_complete_pending = False
-            st.session_state.bystander_mode = False
-            st.session_state.bystander_reason = ""
-            st.rerun()
-
-    else:
-        sess_key = f"session_{st.session_state.current_session_num}"
-        if backup_data and sess_key in backup_data:
-            curr_session = backup_data[sess_key]
-            
-            salutation_text = curr_session["salutation"].format(student_name=st.session_state.student_name)
-            st.markdown(f"**{salutation_text}**")
-            
-            st.subheader(curr_session["title"])
-            st.write(curr_session["scenario"])
-            st.write(f"**Question:** {curr_session['question']}")
-            
-            user_choice = st.radio(
-                "Select your answer:", 
-                curr_session["options"], 
-                key=f"radio_{st.session_state.current_session_num}"
-            )
-            
-            if st.button("Submit Answer", type="primary"):
-                selected_letter = user_choice.split(")")[0].strip()
+            if selected_letter == active_data["correct_option"]:
+                st.session_state.last_feedback = f"✅ **Correct!** {active_data['feedback_correct']}"
+                st.session_state.show_next_button = True
                 
-                if selected_letter == curr_session["correct_option"]:
-                    st.success(curr_session["feedback_correct"])
-                    
-                    term = curr_session["term_card"]
-                    st.markdown(
-                        f"📌 **TERM: {term['term']}**\n"
-                        f"• **Simple meaning:** {term['meaning']}\n"
-                        f"• **Veterinary example:** {term['example']}"
-                    )
-                    
-                    st.write("---")
-                    st.write(f"**Recap:** {curr_session['recap']}")
-                    
-                    if not any(c['title'] == curr_session['title'] for c in st.session_state.completed_bystander_sessions):
-                        st.session_state.completed_bystander_sessions.append({
-                            "title": curr_session["title"],
-                            "scenario": curr_session["scenario"],
-                            "feedback": curr_session["feedback_correct"],
-                            "term_card": curr_session["term_card"],
-                            "recap": curr_session["recap"]
-                        })
-                    
-                    st.session_state.session_complete_pending = True
-                else:
-                    st.warning(curr_session.get("feedback_incorrect", "Good attempt! Re-read the scenario carefully and select the best matching option."))
-            
-            if st.session_state.session_complete_pending:
-                st.write("---")
-                next_num = st.session_state.current_session_num + 1
-                btn_label = f"▶ TAP TO CONTINUE TO SESSION {next_num} OF 7" if next_num <= 7 else "🎉 VIEW FINAL ETIOLOGY MATRIX"
-                
-                if st.button(btn_label, type="primary", use_container_width=True):
-                    st.session_state.session_complete_pending = False
-                    st.session_state.current_session_num = next_num
-                    st.rerun()
-        else:
-            st.error("Backup curriculum file missing or unreadable.")
-
-# -----------------------------------------------------------------------------
-# 8. LIVE AI MODE RENDERER
-# -----------------------------------------------------------------------------
-else:
-    for idx, msg in enumerate(st.session_state.chat_history):
-        if idx == 0 and "Greeting: Welcome" in msg["text"]:
-            continue
-        if msg["role"] == "user" and msg["text"].startswith("I am ready. Continue to Session"):
-            continue
-
-        role = "assistant" if msg["role"] == "model" else "user"
-        with st.chat_message(role):
-            render_custom_markdown(msg["text"])
-
-    if st.session_state.chat_history:
-        last_msg = st.session_state.chat_history[-1]
-        if last_msg["role"] == "model" and "[SESSION_COMPLETE]" in last_msg["text"]:
-            st.session_state.session_complete_pending = True
-
-    if st.session_state.session_complete_pending:
-        st.write("---")
-        next_num = st.session_state.current_session_num + 1
-        btn_label = f"▶ TAP TO CONTINUE TO SESSION {next_num} OF 7" if next_num <= 7 else "🎉 MODULE COMPLETE"
-        
-        if st.button(btn_label, type="primary", use_container_width=True):
-            st.session_state.session_complete_pending = False
-            st.session_state.current_session_num = next_num
-            
-            if next_num > 7:
-                st.session_state.bystander_mode = True
+                if not any(c['title'] == active_data['title'] for c in st.session_state.completed_sessions):
+                    st.session_state.completed_sessions.append({
+                        "title": active_data["title"],
+                        "scenario": active_data["scenario"],
+                        "feedback": active_data["feedback_correct"],
+                        "term_card": active_data["term_card"]
+                    })
                 st.rerun()
             else:
-                user_input = (
-                    f"I am ready. Begin Session {next_num} of 7 now for an absolute first-year beginner student ({st.session_state.student_name}). "
-                    f"Follow the curriculum strictly for Session {next_num}: keep explanations concise (under 80 words), use simple farm animal examples, and end with a 3-option MCQ."
-                )
-                st.session_state.chat_history.append({"role": "user", "text": user_input})
-
-                with st.chat_message("assistant"):
-                    with st.spinner("Preparing next session..."):
-                        resp_text = generate_tutor_response(st.session_state.chat_history)
-                        if resp_text:
-                            render_custom_markdown(resp_text)
-                            st.session_state.chat_history.append({"role": "model", "text": resp_text})
-                        else:
-                            st.session_state.bystander_mode = True
-                            st.rerun()
-                st.rerun()
-
-    user_prompt = st.chat_input(
-        "Type your answer here...", 
-        disabled=st.session_state.session_complete_pending
-    )
-
-    if user_prompt:
-        st.session_state.chat_history.append({"role": "user", "text": user_prompt})
-        with st.chat_message("user"):
-            st.markdown(user_prompt)
-
-        with st.chat_message("assistant"):
-            with st.spinner("Thinking..."):
-                resp_text = generate_tutor_response(st.session_state.chat_history)
-                if resp_text:
-                    render_custom_markdown(resp_text)
-                    st.session_state.chat_history.append({"role": "model", "text": resp_text})
-                else:
-                    st.session_state.bystander_mode = True
-                    st.rerun()
-
-        st.rerun()
+                st.warning(active_data["feedback_incorrect"])
+    
+    if st.session_state.show_next_button:
+        st.success(st.session_state.last_feedback)
+        term = active_data["term_card"]
+        st.markdown(
+            f"📌 **TERM: {term['term']}**\n"
+            f"• **Simple meaning:** {term['meaning']}\n"
+            f"• **Veterinary example:** {term['example']}"
+        )
+        st.write("---")
+        st.write(f"**Recap:** {active_data['recap']}")
+        
+        next_num = st.session_state.current_session_num + 1
+        btn_label = f"▶ TAP TO CONTINUE TO SESSION {next_num} OF 7" if next_num <= 7 else "🎉 VIEW FINAL MATRIX"
+        
+        if st.button(btn_label, type="primary", use_container_width=True):
+            st.session_state.show_next_button = False
+            st.session_state.last_feedback = ""
+            st.session_state.current_session_num = next_num
+            st.session_state.live_session_data = None
+            st.rerun()
