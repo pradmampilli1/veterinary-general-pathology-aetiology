@@ -81,9 +81,9 @@ CURRICULUM_DATA = {
     {
       "session_number": 1,
       "title": "Session 1 of 8 — Why Does an Animal Become Sick?",
-      "intro": "Welcome to **General Veterinary Pathology**! Let's step straight onto the farm and investigate a real case.",
+      "intro": "Let's step straight onto the farm and investigate a real clinical mystery.",
       "scenario": "Two dairy calves face identical management. Following a cold rain, Calf B develops a high fever, while Calf A remains healthy.",
-      "question": "Both calves faced the same environment, yet only one fell sick. What is the most important question a veterinary pathologist must answer first?",
+      "question": "Both calves faced the same environment, yet only one fell sick. What is the core question a veterinary pathologist must answer first?",
       "options": [
         "A) Why did Calf B become sick while Calf A stayed healthy?",
         "B) What is the normal surgical recovery rate?",
@@ -96,163 +96,160 @@ CURRICULUM_DATA = {
       "term_card": {
         "term": "ETIOLOGY",
         "meaning": "The study of the cause or origin of disease.",
-        "example": "Determining why Calf B developed a fever after environmental exposure."
+        "example": "Investigating why respiratory infection broke out in a newly transported batch of piglets."
       },
       "recap": "Etiology asks WHY an animal became sick."
     },
     {
       "session_number": 2,
       "title": "Session 2 of 8 — Predisposing Causes",
-      "intro": "Sometimes two animals face a similar situation, but one is more likely to become diseased. Why?",
-      "scenario": "Two cattle are exposed to strong sunlight. A white-faced Hereford develops a sun-related lesion around the eye, while a heavily pigmented animal does not.",
-      "question": "Which factor could make one animal more susceptible?",
+      "intro": "Some factors do not directly cause disease on their own, but make certain animals more vulnerable.",
+      "scenario": "A herd of mixed cattle is exposed to intense sunlight. White-faced Hereford cattle develop ocular squamous cell carcinoma ('cancer eye'), while fully pigmented Angus cattle in the same field remain unaffected.",
+      "question": "Why did only the Hereford cattle develop sun-related lesions under identical sunlight exposure?",
       "options": [
-        "A) Breed and pigmentation",
-        "B) A bacterial culture",
-        "C) A surgical operation",
-        "D) A vitamin injection"
+        "A) Their breed trait and lack of pigmentation increased susceptibility",
+        "B) They were infected by an acute viral respiratory pathogen",
+        "C) They ingested toxic pasture weeds",
+        "D) They suffered severe mechanical bone fractures"
       ],
       "correct_option": "A",
-      "feedback_correct": "Certain characteristics can make an animal more susceptible to disease. These are called predisposing causes.",
-      "feedback_incorrect": "Look at the difference between the animals. Their breed and pigmentation can influence susceptibility.",
+      "feedback_correct": "Correct! Lack of pigment and breed traits increase vulnerability without directly causing the injury themselves.",
+      "feedback_incorrect": "Good try. Look at the biological difference between the cattle groups facing the same sun.",
       "term_card": {
         "term": "PREDISPOSING CAUSE",
-        "meaning": "A factor that makes an animal more likely or susceptible to disease.",
-        "example": "Breed, age, sex, heredity, species, or pigmentation may increase susceptibility."
+        "meaning": "A factor that makes an animal more susceptible or vulnerable to disease.",
+        "example": "Age-related immune decline making older dogs prone to chronic dental disease."
       },
-      "recap": "Predisposing causes make an animal more susceptible to disease."
+      "recap": "Predisposing causes (like breed, age, sex, and pigmentation) increase susceptibility to disease."
     },
     {
       "session_number": 3,
       "title": "Session 3 of 8 — Definitive Causes: Physical",
-      "intro": "Now let's look at factors that can directly produce disease or injury.",
-      "scenario": "A dog is hit by a vehicle and develops a fractured limb.",
-      "question": "What type of cause directly produced the dog's injury?",
+      "intro": "While predisposing factors increase vulnerability, **Definitive Causes** are the actual active agents that produce tissue injury.",
+      "scenario": "An adult German Shepherd dog is rushed to the clinic after being struck by a motor vehicle, presenting with a compound femoral fracture and soft tissue contusions.",
+      "question": "What broad category of definitive disease causes does this vehicular impact represent?",
       "options": [
-        "A) Nutritional cause",
-        "B) Physical cause",
-        "C) Biological cause",
-        "D) Hereditary cause"
+        "A) Nutritional mineral deficiency",
+        "B) Physical cause (Mechanical trauma)",
+        "C) Biological bacterial infection",
+        "D) Immunological hypersensitivity"
       ],
       "correct_option": "B",
-      "feedback_correct": "A mechanical force from the accident directly produced the injury.",
-      "feedback_incorrect": "Think about what physically acted on the dog. It was a mechanical force.",
+      "feedback_correct": "Excellent! Mechanical trauma, extreme heat, cold, and radiation are direct physical exciting causes.",
+      "feedback_incorrect": "Not quite. An external crash force or impact is classified under physical exciting causes.",
       "term_card": {
         "term": "PHYSICAL CAUSE",
-        "meaning": "A harmful physical force, energy, temperature or radiation that can produce disease or injury.",
-        "example": "Mechanical trauma in a dog after a road accident."
+        "meaning": "Harmful physical force, extreme temperature, or radiation that injures tissues.",
+        "example": "Severe skin burns sustained by livestock during a farm barn fire."
       },
-      "recap": "Physical causes include mechanical trauma, heat, cold and radiation."
+      "recap": "Physical definitive causes include mechanical trauma, heat, cold, and radiation."
     },
     {
       "session_number": 4,
       "title": "Session 4 of 8 — Chemical Causes and Toxins",
-      "intro": "Animals may also become diseased after exposure to harmful chemicals or toxic substances.",
-      "scenario": "Several sheep become ill after grazing in an area contaminated with an agricultural pesticide.",
-      "question": "How should this cause be classified?",
+      "intro": "Chemical agents and poisons act as major direct disease triggers in veterinary practice.",
+      "scenario": "Several sheep grazing near a freshly sprayed agricultural field suddenly exhibit excessive salivation, muscle tremors, and respiratory distress.",
+      "question": "How should this poisoning incident be classified under definitive veterinary causes?",
       "options": [
-        "A) Hereditary cause",
-        "B) Physical cause",
-        "C) Chemical / toxic cause",
-        "D) Age-related cause"
+        "A) Chemical cause / Pesticide toxicity",
+        "B) Predisposing breed factor",
+        "C) Physical radiation injury",
+        "D) Hereditary genetic defect"
       ],
-      "correct_option": "C",
-      "feedback_correct": "A pesticide is a chemical substance that can produce toxicity.",
-      "feedback_incorrect": "Look at the clue: the sheep were exposed to a pesticide. That points to a chemical or toxic cause.",
+      "correct_option": "A",
+      "feedback_correct": "Well done! Chemical substances and agricultural toxins act as direct exciting causes of poisoning.",
+      "feedback_incorrect": "Good attempt. Exposure to agricultural poisons or chemicals falls under chemical causes.",
       "term_card": {
-        "term": "CHEMICAL CAUSE",
-        "meaning": "A harmful chemical substance capable of producing disease or injury.",
-        "example": "Pesticide toxicity in sheep."
+        "term": "CHEMICAL CAUSE / TOXIN",
+        "meaning": "Acids, alkalis, heavy metals, phytotoxins, zootoxins, and pesticides capable of producing poisoning.",
+        "example": "Ingestion of neurotoxic snake venom (zootoxin) by a working farm dog."
       },
-      "recap": "Chemical causes and toxins can directly produce disease."
+      "recap": "Chemical causes and toxins act as direct exciting causes that poison and injure tissues."
     },
     {
       "session_number": 5,
       "title": "Session 5 of 8 — Biological Causes: Microbial Agents",
-      "intro": "Now ask: WHO caused the disease? Many diseases are caused by biological agents.",
-      "scenario": "A group of cattle develops fever and characteristic disease after exposure to an infectious agent.",
-      "question": "Which of the following is a biological cause of disease?",
+      "intro": "Now let's ask: **WHO** caused the disease? Many infections are driven by microscopic living agents.",
+      "scenario": "A group of cattle on a farm develops sudden high fever, systemic shock, and rapid death following exposure to a spore-forming rod bacterium.",
+      "question": "Which major category of definitive causes do bacteria, viruses, and fungi belong to?",
       "options": [
-        "A) Bacterium",
-        "B) Heat",
-        "C) Calcium deficiency",
-        "D) Mechanical trauma"
+        "A) Physical thermal burns",
+        "B) Biological / Viable causes",
+        "C) Nutritional mineral imbalances",
+        "D) Chemical acid corrosion"
       ],
-      "correct_option": "A",
-      "feedback_correct": "Bacteria are biological agents capable of causing infectious disease.",
-      "feedback_incorrect": "Think about which option is an organism rather than a physical or nutritional factor.",
+      "correct_option": "B",
+      "feedback_correct": "Correct! Living infectious microorganisms are classified as biological or viable causes.",
+      "feedback_incorrect": "Good try. Living microscopic pathogens fall under biological/viable causes.",
       "term_card": {
         "term": "BIOLOGICAL / VIABLE CAUSE",
-        "meaning": "A disease-causing organism or infectious biological agent.",
-        "example": "Bacteria causing anthrax in cattle."
+        "meaning": "Disease-causing living organisms including bacteria, viruses, fungi, mycoplasma, and rickettsia.",
+        "example": "Foot-and-Mouth Disease virus spreading rapidly through a dairy herd."
       },
-      "recap": "Microbial biological causes include bacteria, viruses, fungi, mycoplasma and rickettsial organisms."
+      "recap": "Microbial biological causes include bacteria, viruses, fungi, mycoplasma, and rickettsial organisms."
     },
     {
       "session_number": 6,
       "title": "Session 6 of 8 — Biological Causes: Parasites",
-      "intro": "Some biological causes are parasites. Let's see how they fit into the classification.",
-      "scenario": "A group of goats becomes weak and pale because of a heavy Haemonchus infection.",
-      "question": "Haemonchus belongs to which broad group?",
+      "intro": "Some biological causes are macro-parasites that inhabit internal or external body compartments.",
+      "scenario": "A sheep flock in Wayanad experiences severe anemia, weakness, and submandibular edema ('bottle jaw') due to heavy blood-feeding parasite burdens in the abomasum.",
+      "question": "Which specific group of biological causes do internal worms like Haemonchus belong to?",
       "options": [
-        "A) Chemical cause",
-        "B) Physical cause",
-        "C) Biological cause",
-        "D) Predisposing cause"
+        "A) Chemical pesticide",
+        "B) Physical mechanical trauma",
+        "C) Biological cause – Helminth (Parasitic worm)",
+        "D) Nutritional deficiency"
       ],
       "correct_option": "C",
-      "feedback_correct": "Haemonchus is a parasitic organism, so it is a biological cause.",
-      "feedback_incorrect": "Haemonchus is a parasite. Parasites belong under biological causes.",
+      "feedback_correct": "Great! Parasitic worms (helminths), protozoa, and arthropods are biological parasite causes.",
+      "feedback_incorrect": "Good try. Parasitic worms fall under biological helminth causes.",
       "term_card": {
-        "term": "HELMINTH",
-        "meaning": "A parasitic worm.",
-        "example": "Haemonchus in sheep and goats."
+        "term": "HELMINTH (PARASITIC WORM)",
+        "meaning": "A multicellular parasitic worm infecting internal organs or tissues.",
+        "example": "Liver fluke (Fasciola hepatica) causing bile duct fibrosis in cattle."
       },
-      "recap": "Parasitic causes are biological causes and include protozoa, helminths and arthropods."
+      "recap": "Parasitic causes are biological causes spanning protozoa, helminths, trematodes, cestodes, and arthropods."
     },
     {
       "session_number": 7,
       "title": "Session 7 of 8 — Nutritional, Immunological and Miscellaneous Causes",
-      "intro": "A few important causes remain. Let's identify them from veterinary situations.",
-      "scenario": "A high-producing dairy cow becomes weak and unable to stand shortly after calving. Blood calcium concentration is very low.",
-      "question": "Which type of cause should you consider?",
+      "intro": "To complete our definitive causes, let's examine nutrient imbalances, immune reactions, and medical interventions.",
+      "scenario": "A high-producing dairy cow collapses in sternal recumbency unable to stand right after calving, with blood biochemistry revealing severely depressed calcium levels.",
+      "question": "How should milk fever around parturition be classified in veterinary pathology?",
       "options": [
-        "A) Biological cause",
-        "B) Physical cause",
-        "C) Nutritional cause",
-        "D) Hereditary cause"
+        "A) Nutritional / Metabolic cause (Calcium deficiency)",
+        "B) Physical trauma injury",
+        "C) Biological viral infection",
+        "D) Chemical heavy metal poisoning"
       ],
-      "correct_option": "C",
-      "feedback_correct": "Low calcium is a nutritional imbalance associated with milk fever around calving.",
-      "feedback_incorrect": "Look at the clue: the cow has very low calcium. Calcium is a nutrient.",
+      "correct_option": "A",
+      "feedback_correct": "Excellent! Deficiencies or excesses of essential nutrients and minerals are classified as nutritional causes.",
+      "feedback_incorrect": "Good attempt. Metabolic mineral imbalances around parturition stem directly from nutrition/metabolism.",
       "term_card": {
         "term": "NUTRITIONAL CAUSE",
-        "meaning": "Disease caused by deficiency, excess or imbalance of a nutrient.",
-        "example": "Milk fever associated with low calcium in a dairy cow."
+        "meaning": "Disease resulting from deficiency, excess, or imbalance of essential nutrients or minerals.",
+        "example": "White muscle disease in goat kids due to selenium and vitamin E deficiency."
       },
-      "recap": "The remaining definitive causes include nutritional, immunological and miscellaneous causes."
+      "recap": "Nutritional, immunological, and miscellaneous (iatrogenic/idiosyncrasy) factors complete our definitive causes."
     },
     {
       "session_number": 8,
-      "title": "Session 8 of 8 — You Are the Pathologist!",
-      "intro": "This is your final challenge. You now have to classify the cause from short veterinary situations.",
-      "scenario": "A dog develops injury after being hit by a vehicle.",
-      "question": "How should the cause be classified?",
+      "title": "Session 8 of 8 — You Are the Pathologist! Final Challenge",
+      "intro": "Put your knowledge into practice! Test your ability to classify different veterinary disease scenarios.",
+      "scenario": "Review the clinical challenge cases below to complete your pathology training.",
+      "question": "Complete the final challenge cases to test your clinical classification skills.",
       "options": [
-        "A) Definitive → Physical → Mechanical trauma",
-        "B) Predisposing → Breed",
-        "C) Definitive → Nutritional → Deficiency",
-        "D) Definitive → Biological → Virus"
+        "A) Start Final Challenge Evaluation"
       ],
       "correct_option": "A",
-      "feedback_correct": "You correctly connected the veterinary situation with the complete classification.",
-      "feedback_incorrect": "Think about what directly acted on the dog. It was a physical mechanical force.",
+      "feedback_correct": "Proceeding to the final pathology challenge.",
+      "feedback_incorrect": "Proceeding to the final pathology challenge.",
       "term_card": {
-        "term": "DEFINITIVE CAUSE",
-        "meaning": "The actual agent or factor that directly produces disease or injury.",
-        "example": "Mechanical trauma from a road accident."
+        "term": "CLINICAL ETIOLOGICAL CLASSIFICATION",
+        "meaning": "The systematic grouping of disease triggers into predisposing and definitive categories.",
+        "example": "Applying pathological frameworks to diagnose field outbreaks in veterinary practice."
       },
-      "recap": "Think: Predisposing factors increase susceptibility; definitive causes actually produce disease or injury."
+      "recap": "Mastery of etiology allows quick, structured reasoning in clinical veterinary diagnostics."
     }
   ]
 }
@@ -346,66 +343,17 @@ else:
     if sess:
         st.subheader(sess["title"])
         st.write(sess["intro"])
-        st.info(sess["scenario"])
-        st.write(f"**Question:** {sess['question']}")
         
-        user_choice = st.radio(
-            "Select your answer:", 
-            sess["options"], 
-            key=f"radio_session_{current_num}"
-        )
-        
-        if not st.session_state.show_next_button:
-            if st.button("Submit Answer", type="primary"):
-                selected_letter = user_choice.split(")")[0].strip()
-                
-                if selected_letter == sess["correct_option"]:
-                    st.session_state.last_feedback = sess["feedback_correct"]
-                    st.session_state.show_next_button = True
-                    
-                    if not any(c['title'] == sess['title'] for c in st.session_state.completed_sessions):
-                        st.session_state.completed_sessions.append({
-                            "title": sess["title"],
-                            "scenario": sess["scenario"],
-                            "feedback": sess["feedback_correct"],
-                            "term_card": sess["term_card"]
-                        })
-                    st.rerun()
-                else:
-                    st.warning(sess["feedback_incorrect"])
-        
-        if st.session_state.show_next_button:
-            st.success(f"✅ **Correct!** {st.session_state.last_feedback}")
-            term = sess["term_card"]
-            st.markdown(
-                f"📌 **TERM: {term['term']}**\n\n"
-                f"• **Meaning:** {term['meaning']}\n\n"
-                f"• **Veterinary example:** {term['example']}"
-            )
-            st.write("---")
-            st.write(f"**Recap:** {sess['recap']}")
-            st.markdown("**SESSION COMPLETE**")
-            
-            next_num = current_num + 1
-            btn_label = f"▶ TAP TO CONTINUE TO SESSION {next_num} OF 8" if next_num <= 8 else "🎉 VIEW FINAL MATRIX"
-            
-            if st.button(btn_label, type="primary", use_container_width=True):
-                st.session_state.show_next_button = False
-                st.session_state.last_feedback = ""
-                st.session_state.current_session_num = next_num
-                st.rerun()
-        
-        # Special rendering for Session 8 challenge questions if desired
-        if current_num == 8 and st.session_state.show_next_button:
-            st.write("---")
+        if current_num == 8:
+            st.info(sess["scenario"])
             st.markdown("### 🏆 Final Pathology Challenge Questions")
             
             challenge_qs = [
-                {"q": "A sheep develops disease after eating a poisonous plant. Which category?", "opts": ["A) Physical", "B) Chemical / toxic", "C) Hereditary", "D) Age-related"], "ans": "B"},
-                {"q": "A cow develops fasciolosis due to Fasciola infection. Which category?", "opts": ["A) Biological → Trematode", "B) Physical → Heat", "C) Nutritional → Deficiency", "D) Predisposing → Breed"], "ans": "A"},
-                {"q": "A particular breed of dog is more susceptible to a disease. Which category?", "opts": ["A) Definitive → Physical", "B) Definitive → Chemical", "C) Predisposing → Breed", "D) Definitive → Biological"], "ans": "C"},
-                {"q": "A cow develops milk fever associated with low blood calcium after calving. Which category?", "opts": ["A) Biological", "B) Nutritional", "C) Physical", "D) Chemical"], "ans": "B"},
-                {"q": "An animal develops an unintended condition following veterinary intervention. Which category?", "opts": ["A) Iatrogenic", "B) Viral", "C) Physical", "D) Hereditary"], "ans": "A"}
+                {"q": "A sheep develops systemic illness after consuming toxic ornamental shrubs on pasture. Which category?", "opts": ["A) Physical trauma", "B) Chemical / phytotoxin", "C) Hereditary defect", "D) Age-related change"], "ans": "B"},
+                {"q": "A cattle herd experiences an outbreak of fasciolosis due to liver fluke infestation. Which category?", "opts": ["A) Biological → Trematode", "B) Physical → Cold", "C) Nutritional → Excess", "D) Predisposing → Sex"], "ans": "A"},
+                {"q": "An aged German Shepherd develops degenerative joint changes due to natural senescence. Which predisposing category applies?", "opts": ["A) Definitive physical", "B) Definitive chemical", "C) Predisposing → Age", "D) Definitive biological"], "ans": "C"},
+                {"q": "A dairy cow develops milk fever associated with low blood calcium after calving. Which category?", "opts": ["A) Biological", "B) Nutritional", "C) Physical", "D) Chemical"], "ans": "B"},
+                {"q": "A dog develops severe tissue necrosis at an accidental subcutaneous drug leakage site. Which category?", "opts": ["A) Iatrogenic / Miscellaneous", "B) Viral infection", "C) Mechanical trauma", "D) Genetic mutation"], "ans": "A"}
             ]
             
             with st.form("final_challenge_form"):
@@ -431,6 +379,62 @@ else:
                     st.balloons()
                     st.markdown("🌟 **Flawless performance! You are fully ready for clinical veterinary pathology!**")
                 
+                if not any(c['title'] == sess['title'] for c in st.session_state.completed_sessions):
+                    st.session_state.completed_sessions.append({
+                        "title": sess["title"],
+                        "scenario": sess["scenario"],
+                        "feedback": f"Completed challenge with score {st.session_state.challenge_score}/5",
+                        "term_card": sess["term_card"]
+                    })
+                
                 if st.button("🎉 VIEW FINAL MATRIX & COMPLETE MODULE", type="primary"):
                     st.session_state.current_session_num = 9
+                    st.rerun()
+        else:
+            st.info(sess["scenario"])
+            st.write(f"**Question:** {sess['question']}")
+            
+            user_choice = st.radio(
+                "Select your answer:", 
+                sess["options"], 
+                key=f"radio_session_{current_num}"
+            )
+            
+            if not st.session_state.show_next_button:
+                if st.button("Submit Answer", type="primary"):
+                    selected_letter = user_choice.split(")")[0].strip()
+                    
+                    if selected_letter == sess["correct_option"]:
+                        st.session_state.last_feedback = sess["feedback_correct"]
+                        st.session_state.show_next_button = True
+                        
+                        if not any(c['title'] == sess['title'] for c in st.session_state.completed_sessions):
+                            st.session_state.completed_sessions.append({
+                                "title": sess["title"],
+                                "scenario": sess["scenario"],
+                                "feedback": sess["feedback_correct"],
+                                "term_card": sess["term_card"]
+                            })
+                        st.rerun()
+                    else:
+                        st.warning(sess["feedback_incorrect"])
+            
+            if st.session_state.show_next_button:
+                st.success(f"✅ **Correct!** {st.session_state.last_feedback}")
+                term = sess["term_card"]
+                st.markdown(
+                    f"📌 **TERM: {term['term']}**\n\n"
+                    f"• **Meaning:** {term['meaning']}\n\n"
+                    f"• **Veterinary example:** {term['example']}"
+                )
+                st.write("---")
+                st.write(f"**Recap:** {sess['recap']}")
+                
+                next_num = current_num + 1
+                btn_label = f"▶ CONTINUE TO SESSION {next_num}" if next_num <= 8 else "🎉 VIEW FINAL MATRIX"
+                
+                if st.button(btn_label, type="primary", use_container_width=True):
+                    st.session_state.show_next_button = False
+                    st.session_state.last_feedback = ""
+                    st.session_state.current_session_num = next_num
                     st.rerun()
