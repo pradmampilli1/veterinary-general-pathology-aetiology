@@ -81,22 +81,22 @@ CURRICULUM_DATA = {
     {
       "session_number": 1,
       "title": "Session 1 of 8 — Why Does an Animal Become Sick?",
-      "intro": "Let's begin with one simple question: WHY does an animal become sick?",
-      "scenario": "A healthy calf suddenly develops fever and becomes dull. A veterinarian wants to know what caused this change.",
-      "question": "What is the veterinarian trying to find out?",
+      "intro": "Welcome to **General Veterinary Pathology**! Let's step straight onto the farm and investigate a real case.",
+      "scenario": "Two dairy calves face identical management. Following a cold rain, Calf B develops a high fever, while Calf A remains healthy.",
+      "question": "Both calves faced the same environment, yet only one fell sick. What is the most important question a veterinary pathologist must answer first?",
       "options": [
-        "A) The cause of the disease",
-        "B) The colour of the calf",
-        "C) The name of the treatment",
-        "D) The breed of the veterinarian"
+        "A) Why did Calf B become sick while Calf A stayed healthy?",
+        "B) What is the normal surgical recovery rate?",
+        "C) How do we stain tissue under the microscope?",
+        "D) What is the market value of the calf?"
       ],
       "correct_option": "A",
-      "feedback_correct": "Correct! We are trying to find the CAUSE of the disease.",
-      "feedback_incorrect": "Think about the question: 'Why did the calf become sick?' We are looking for the cause.",
+      "feedback_correct": "Spot on! Our central mission in pathology always starts with asking WHY an animal became sick.",
+      "feedback_incorrect": "Good attempt. Think about what we are trying to uncover first when investigating a sick animal.",
       "term_card": {
         "term": "ETIOLOGY",
-        "meaning": "The study of the cause or causes of disease.",
-        "example": "Finding out why a dog became diseased."
+        "meaning": "The study of the cause or origin of disease.",
+        "example": "Determining why Calf B developed a fever after environmental exposure."
       },
       "recap": "Etiology asks WHY an animal became sick."
     },
@@ -113,7 +113,7 @@ CURRICULUM_DATA = {
         "D) A vitamin injection"
       ],
       "correct_option": "A",
-      "feedback_correct": "Correct! Certain characteristics can make an animal more susceptible to disease. These are called predisposing causes.",
+      "feedback_correct": "Certain characteristics can make an animal more susceptible to disease. These are called predisposing causes.",
       "feedback_incorrect": "Look at the difference between the animals. Their breed and pigmentation can influence susceptibility.",
       "term_card": {
         "term": "PREDISPOSING CAUSE",
@@ -135,7 +135,7 @@ CURRICULUM_DATA = {
         "D) Hereditary cause"
       ],
       "correct_option": "B",
-      "feedback_correct": "Correct! A mechanical force from the accident directly produced the injury.",
+      "feedback_correct": "A mechanical force from the accident directly produced the injury.",
       "feedback_incorrect": "Think about what physically acted on the dog. It was a mechanical force.",
       "term_card": {
         "term": "PHYSICAL CAUSE",
@@ -157,7 +157,7 @@ CURRICULUM_DATA = {
         "D) Age-related cause"
       ],
       "correct_option": "C",
-      "feedback_correct": "Correct! A pesticide is a chemical substance that can produce toxicity.",
+      "feedback_correct": "A pesticide is a chemical substance that can produce toxicity.",
       "feedback_incorrect": "Look at the clue: the sheep were exposed to a pesticide. That points to a chemical or toxic cause.",
       "term_card": {
         "term": "CHEMICAL CAUSE",
@@ -179,7 +179,7 @@ CURRICULUM_DATA = {
         "D) Mechanical trauma"
       ],
       "correct_option": "A",
-      "feedback_correct": "Correct! Bacteria are biological agents capable of causing infectious disease.",
+      "feedback_correct": "Bacteria are biological agents capable of causing infectious disease.",
       "feedback_incorrect": "Think about which option is an organism rather than a physical or nutritional factor.",
       "term_card": {
         "term": "BIOLOGICAL / VIABLE CAUSE",
@@ -201,7 +201,7 @@ CURRICULUM_DATA = {
         "D) Predisposing cause"
       ],
       "correct_option": "C",
-      "feedback_correct": "Correct! Haemonchus is a parasitic organism, so it is a biological cause.",
+      "feedback_correct": "Haemonchus is a parasitic organism, so it is a biological cause.",
       "feedback_incorrect": "Haemonchus is a parasite. Parasites belong under biological causes.",
       "term_card": {
         "term": "HELMINTH",
@@ -223,7 +223,7 @@ CURRICULUM_DATA = {
         "D) Hereditary cause"
       ],
       "correct_option": "C",
-      "feedback_correct": "Correct! Low calcium is a nutritional imbalance associated with milk fever around calving.",
+      "feedback_correct": "Low calcium is a nutritional imbalance associated with milk fever around calving.",
       "feedback_incorrect": "Look at the clue: the cow has very low calcium. Calcium is a nutrient.",
       "term_card": {
         "term": "NUTRITIONAL CAUSE",
@@ -245,7 +245,7 @@ CURRICULUM_DATA = {
         "D) Definitive → Biological → Virus"
       ],
       "correct_option": "A",
-      "feedback_correct": "Excellent! You correctly connected the veterinary situation with the complete classification.",
+      "feedback_correct": "You correctly connected the veterinary situation with the complete classification.",
       "feedback_incorrect": "Think about what directly acted on the dog. It was a physical mechanical force.",
       "term_card": {
         "term": "DEFINITIVE CAUSE",
@@ -293,8 +293,8 @@ for comp in st.session_state.completed_sessions:
         st.success(comp['feedback'])
         term = comp['term_card']
         st.markdown(
-            f"📌 **TERM: {term['term']}**\n"
-            f"• **Meaning:** {term['meaning']}\n"
+            f"📌 **TERM: {term['term']}**\n\n"
+            f"• **Meaning:** {term['meaning']}\n\n"
             f"• **Veterinary example:** {term['example']}"
         )
 
@@ -378,8 +378,8 @@ else:
             st.success(f"✅ **Correct!** {st.session_state.last_feedback}")
             term = sess["term_card"]
             st.markdown(
-                f"📌 **TERM: {term['term']}**\n"
-                f"• **Meaning:** {term['meaning']}\n"
+                f"📌 **TERM: {term['term']}**\n\n"
+                f"• **Meaning:** {term['meaning']}\n\n"
                 f"• **Veterinary example:** {term['example']}"
             )
             st.write("---")
