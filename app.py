@@ -86,7 +86,7 @@ SYSTEM_PROMPT = r"""
 **TARGET AUDIENCE:** BVSc & AH First-Year Students (CVAS Pookode)  
 **PEDAGOGICAL STYLE:** Micro-Socratic, Ultra-Concise, Beginner Language, Strict MCQ-Driven.
 
-You must output ONLY valid JSON matching this exact structure, with no markdown code blocks around it if possible. Do not include conversational filler.
+You must output ONLY valid JSON matching this exact structure, with no markdown code blocks around it. Do not include conversational filler.
 
 JSON STRUCTURE REQUIRED:
 {
@@ -111,8 +111,8 @@ JSON STRUCTURE REQUIRED:
 """
 
 MODELS_TO_TRY = [
-    "gemini-1.5-pro",
-    "gemini-1.5-flash"
+    "gemini-1.5-flash",
+    "gemini-1.5-pro"
 ]
 
 # -----------------------------------------------------------------------------
@@ -167,23 +167,27 @@ def fetch_structured_session_from_ai(session_num, student_name):
 
     for key in keys:
         for model_name in MODELS_TO_TRY:
-            for ver in ["v1beta", "v1"]:
-                url = f"https://generativelanguage.googleapis.com/{ver}/models/{model_name}:generateContent?key={key}"
-                req = urllib.request.Request(
-                    url, data=payload_bytes, headers={"Content-Type": "application/json"}, method="POST"
-                )
-                try:
-                    with urllib.request.urlopen(req, timeout=12) as response:
-                        if response.status == 200:
-                            res_body = json.loads(response.read().decode("utf-8"))
-                            candidates = res_body.get("candidates", [])
-                            if candidates:
-                                text_out = candidates[0].get("content", {}).get("parts", [])[0]["text"]
-                                text_out = text_out.replace("```json", "").replace("```", "").strip()
-                                return json.loads(text_out)
-                except Exception as e:
-                    last_err = str(e)
-                    continue
+            # Using v1beta endpoint reliably
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
+            req = urllib.request.Request(
+                url, data=payload_bytes, headers={"Content-Type": "application/json"}, method="POST"
+            )
+            try:
+                with urllib.request.urlopen(req, timeout=12) as response:
+                    if response.status == 200:
+                        res_body = json.loads(response.read().decode("utf-8"))
+                        candidates = res_body.get("candidates", [])
+                        if candidates:
+                            text_out = candidates[0].get("content", {}).get("parts", [])[0]["text"]
+                            text_out = text_out.replace("```json", "").replace("```", "").strip()
+                            return json.loads(text_out)
+            except urllib.error.HTTPError as e:
+                err_detail = e.read().decode("utf-8")
+                last_err = f"HTTP {e.code} on {model_name}: {err_detail[:100]}"
+                continue
+            except Exception as e:
+                last_err = f"Error on {model_name}: {str(e)}"
+                continue
 
     st.session_state.bystander_reason = f"REST Error or Rate Limit: {last_err}"
     return None
